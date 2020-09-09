@@ -1,4 +1,8 @@
 name: MarketPlugin
 version: ${project.version}
 main: be.lacratus.market.Market
-api-version: 1.16
+depend: [Vault]
+api-version: 1.12
+
+commands:
+  market:
