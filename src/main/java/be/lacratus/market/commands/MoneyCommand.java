@@ -21,7 +21,7 @@ public class MoneyCommand implements CommandExecutor {
         if (args.length == 0) {
             if (sender instanceof Player) {
                 OfflinePlayer player = (OfflinePlayer) sender;
-                main.getEconomyImplementer().getBalance(player);
+                sender.sendMessage(main.getEconomyImplementer().getBalance(player) + "");
             } else {
                 System.out.println("Console is not a player");
             }
@@ -31,7 +31,7 @@ public class MoneyCommand implements CommandExecutor {
             try {
                 Player player = Bukkit.getPlayer(args[0]);
                 double balance = main.getEconomyImplementer().getBalance(player);
-                sender.sendMessage(String.valueOf(balance));
+                sender.sendMessage(main.getEconomyImplementer().getBalance(player) + "");
             } catch (Exception e) {
                 e.printStackTrace();
             }

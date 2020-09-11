@@ -4,17 +4,27 @@ import be.lacratus.market.API.EconomyImplementer;
 import be.lacratus.market.commands.MarketCommand;
 import be.lacratus.market.commands.MoneyCommand;
 import be.lacratus.market.data.StoredDataHandler;
+import be.lacratus.market.listeners.AuctionListener;
+import be.lacratus.market.listeners.OnDisconnectListener;
 import be.lacratus.market.listeners.OnJoinListener;
+import be.lacratus.market.objects.AuctionHouse;
+import be.lacratus.market.objects.VeilingItem;
 import net.milkbowl.vault.*;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.swing.undo.AbstractUndoableEdit;
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -36,6 +46,9 @@ public final class Market extends JavaPlugin {
     private Economy econ;
     private EconomyImplementer economyImplementer;
 
+    //
+    private List<VeilingItem> veilingItems;
+
 
     @Override
     public void onEnable() {
@@ -45,6 +58,20 @@ public final class Market extends JavaPlugin {
 
         //Listeners
         Bukkit.getPluginManager().registerEvents(new OnJoinListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new OnDisconnectListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new AuctionListener(this), this);
+
+
+        //Databank creation
+
+        veilingItems = new ArrayList<>();
+        //VeilingItems opvullen
+
+        /*for(int i = 0; i < 223 ;i++){
+            ItemStack itemStack = new ItemStack(Material.ENDER_PEARL,1);
+            veilingItems.add(new VeilingItem(itemStack));
+        }*/
+
 
         //Register VaultEconomy
         economyImplementer = new EconomyImplementer(this);
@@ -60,7 +87,6 @@ public final class Market extends JavaPlugin {
 
     @Override
     public void onDisable() {
-
         //Unregister VaultEconomy
         Bukkit.getServicesManager().unregister(Economy.class, economyImplementer);
     }
@@ -90,6 +116,10 @@ public final class Market extends JavaPlugin {
 
     public HashMap<UUID, Double> getPlayerBank() {
         return playerBank;
+    }
+
+    public List<VeilingItem> getVeilingItems() {
+        return veilingItems;
     }
 
     public Economy getEcon() {
