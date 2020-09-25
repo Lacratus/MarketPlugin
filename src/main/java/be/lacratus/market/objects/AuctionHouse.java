@@ -1,5 +1,6 @@
 package be.lacratus.market.objects;
 
+import be.lacratus.market.Market;
 import be.lacratus.market.util.PageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -11,17 +12,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class AuctionHouse {
 
-    private Inventory auctionHouse;
-    private List<VeilingItem> allItems;
 
-
-    public AuctionHouse(Player player, List<VeilingItem> allItems, int page) {
-
-        this.auctionHouse = Bukkit.createInventory(null, 54, "AuctionHouse - " + page);
-        this.allItems = allItems;
+    public AuctionHouse(Player player, PriorityQueue<VeilingItem> allItems, int page, String title) {
+        Inventory auctionHouse = Bukkit.createInventory(null, 54, title);
 
         //Get to previous page if possible
         ItemStack previousPage;
@@ -52,14 +51,30 @@ public class AuctionHouse {
         auctionHouse.setItem(53, nextPage);
         //Fill up AuctionHouse
         for (VeilingItem item : PageUtil.getPageItems(allItems, page, 45)) {
+            //Get Itemstack
+            ItemStack itemstack = item.getItemStack();
+            ItemMeta itemMeta = itemstack.getItemMeta();
+            //Create lore
+            List<String> lores = new ArrayList<>();
+            lores.add("Bid: " + item.getHighestOffer() + "€");
+            long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
+            long[] timeList = onlineTimeToLong(timeLeft);
+            lores.add("Hours: " + timeList[0] + ", Mintutes: " + timeList[1] + ", Seconds: " + timeList[2]);
+            itemMeta.setLore(lores);
+            itemstack.setItemMeta(itemMeta);
+            //Set Item
             auctionHouse.setItem(auctionHouse.firstEmpty(), item.getItemStack());
         }
-
         player.openInventory(auctionHouse);
     }
 
-    public void addItem(VeilingItem veilingItem) {
-        allItems.add(veilingItem);
+    public long[] onlineTimeToLong(long timeInSeconds) {
+        long hours = TimeUnit.SECONDS.toHours(timeInSeconds);
+        timeInSeconds -= TimeUnit.HOURS.toMillis(hours);
+        long minutes = TimeUnit.SECONDS.toMinutes(timeInSeconds);
+        timeInSeconds -= TimeUnit.MINUTES.toMillis(minutes);
+        long seconds = TimeUnit.SECONDS.toSeconds(timeInSeconds);
+        return new long[]{hours, minutes, seconds};
     }
 }
 

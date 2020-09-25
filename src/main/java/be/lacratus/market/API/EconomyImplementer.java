@@ -273,7 +273,7 @@ public class EconomyImplementer implements Economy {
         Player player = Bukkit.getPlayer(s);
         UUID uuid = player.getUniqueId();
         if (!main.getPlayerBank().containsKey(uuid)) {
-            main.getPlayerBank().put(uuid, 0.0);
+            main.getPlayerBank().put(uuid, 100.0);
             return true;
         }
         return false;
@@ -283,7 +283,7 @@ public class EconomyImplementer implements Economy {
     public boolean createPlayerAccount(OfflinePlayer offlinePlayer) {
         UUID uuid = offlinePlayer.getUniqueId();
         if (!main.getPlayerBank().containsKey(uuid)) {
-            main.getPlayerBank().put(uuid, 0.0);
+            main.getPlayerBank().put(uuid, 100.0);
             return true;
         }
         return false;
@@ -294,7 +294,7 @@ public class EconomyImplementer implements Economy {
         Player player = Bukkit.getPlayer(s);
         UUID uuid = player.getUniqueId();
         if (!main.getPlayerBank().containsKey(uuid)) {
-            main.getPlayerBank().put(uuid, 0.0);
+            main.getPlayerBank().put(uuid, 100.0);
             return true;
         }
         return false;
@@ -304,7 +304,7 @@ public class EconomyImplementer implements Economy {
     public boolean createPlayerAccount(OfflinePlayer offlinePlayer, String s) {
         UUID uuid = offlinePlayer.getUniqueId();
         if (!main.getPlayerBank().containsKey(uuid)) {
-            main.getPlayerBank().put(uuid, 0.0);
+            main.getPlayerBank().put(uuid, 100.0);
             return true;
         }
         return false;

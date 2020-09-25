@@ -1,20 +1,26 @@
 package be.lacratus.market.objects;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.UUID;
 
 public class DDGSpeler {
 
     private Player player;
-    private String uuid;
+    private UUID uuid;
     private PriorityQueue<VeilingItem> persoonlijkeItems;
+    private boolean isBidding;
+    private VeilingItem bidVeilingItem;
+    private List<VeilingItem> biddenItems;
+    private List<VeilingItem> removeItemsDatabase;
 
-    public DDGSpeler(String uuid) {
-        this.player = Bukkit.getPlayer(UUID.fromString(uuid));
+    public DDGSpeler(UUID uuid) {
         this.uuid = uuid;
+        this.persoonlijkeItems = new PriorityQueue<>();
+        this.biddenItems = new ArrayList<>();
     }
 
     public Player getPlayer() {
@@ -25,7 +31,7 @@ public class DDGSpeler {
         this.player = player;
     }
 
-    public String getUuid() {
+    public UUID getUuid() {
         return uuid;
     }
 
@@ -33,16 +39,35 @@ public class DDGSpeler {
         return persoonlijkeItems;
     }
 
-    public void voegPersoonlijkItemToe(VeilingItem veilingItem){
-        this.persoonlijkeItems.add(veilingItem);
+    public boolean isBidding() {
+        return isBidding;
     }
 
-    public void bumpItem(VeilingItem veilingItem){
-        if(!veilingItem.isBumped()) {
-            this.persoonlijkeItems.remove(veilingItem);
-            this.persoonlijkeItems.add(veilingItem);
-            veilingItem.setBumped(true);
-        }
-        player.sendMessage("You have already bumped this item once");
+    public void setBidding(boolean bidding) {
+        isBidding = bidding;
+    }
+
+    public VeilingItem getBidVeilingItem() {
+        return bidVeilingItem;
+    }
+
+    public void setBidVeilingItem(VeilingItem bidVeilingItem) {
+        this.bidVeilingItem = bidVeilingItem;
+    }
+
+    public List<VeilingItem> getBiddenItems() {
+        return biddenItems;
+    }
+
+    public void addBiddeditem(VeilingItem veilingItem) {
+        this.biddenItems.add(veilingItem);
+    }
+
+    public void removebiddedItem(VeilingItem veilingItem) {
+        this.biddenItems.remove(veilingItem);
+    }
+
+    public List<VeilingItem> getRemoveItemsDatabase() {
+        return removeItemsDatabase;
     }
 }
