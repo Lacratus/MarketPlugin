@@ -12,7 +12,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +49,9 @@ public class AuctionListener implements Listener {
                         e.getWhoClicked().closeInventory();
                         List<VeilingItem> veilingItems = new ArrayList<>(main.getVeilingItems());
                         VeilingItem veilingItem = veilingItems.get(slot);
-                        if (ddgSpeler.getPersoonlijkeItems().contains(veilingItem)) {
+                        if (!main.getVeilingItems().contains(veilingItem)) {
+                            player.sendMessage("This item has been sold or magically doesn't exist");
+                        } else if (ddgSpeler.getPersoonlijkeItems().contains(veilingItem)) {
                             player.sendMessage("You can't bid on your own items!");
                         } else {
                             ddgSpeler.setBidVeilingItem(veilingItem);
@@ -62,6 +63,8 @@ public class AuctionListener implements Listener {
                 }
                 e.setCancelled(true);
             } else if (inv.getTitle().contains("Personal")) {
+                e.setCancelled(true);
+                   /* -- Bij veiling is het verboden een item van de veiling af te halen.
                 if (player.getInventory().firstEmpty() != -1 && e.getRawSlot() < e.getInventory().getSize()) {
                     //Verkrijg item
                     int slot = e.getSlot();
@@ -83,19 +86,18 @@ public class AuctionListener implements Listener {
                         //update inventory
                         new AuctionHouse(player, main.getVeilingItems(), 1, "Personal");
                         System.out.println("works 2");
+
                     } catch (Exception e1) {
                         e1.printStackTrace();
                         System.out.println("works 3");
                     }
-                } else {
-                    player.sendMessage("Clear your inventory");
-                }
-                e.setCancelled(true);
+                                     */
+            } else {
+                player.sendMessage("Clear your inventory");
             }
-
         }
-
     }
+
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent e) {
@@ -123,7 +125,8 @@ public class AuctionListener implements Listener {
                             lores.set(0, bidLore);*/
                         ddgSpeler.addBiddeditem(veilingItem);
                         ddgSpeler.getBiddenItems().add(veilingItem);
-                        main.getPlayersWithBiddings().put(player.getUniqueId(), ddgSpeler);
+                        main.getPlayersWithBiddings().put(uuid, ddgSpeler);
+                        main.updateLists(ddgSpeler);
                         //Remove money
                         main.getPlayerBank().put(uuid, main.getPlayerBank().get(uuid) - bidding);
                         //

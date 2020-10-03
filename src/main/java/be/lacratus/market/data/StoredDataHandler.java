@@ -10,6 +10,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -20,23 +23,50 @@ public class StoredDataHandler {
 
     public StoredDataHandler(Market main) {
         this.main = main;
-
-
     }
+
+    public CompletableFuture<Integer> getMaxIndex() throws SQLException {
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection connection = main.openConnection();
+                 PreparedStatement ps = connection.prepareStatement("INSERT INTO veilingitem(highestoffer,uuidbidder,uuidowner,timeofdeletion,material,quantity) VALUES (default,default,default,10,default,default)");) {
+                ps.executeUpdate();
+                try (ResultSet rs = connection.prepareStatement("SELECT MAX(itemindex) as maxindex FROM veilingitem").executeQuery()) {
+                    rs.next();
+                    System.out.println(rs.getInt("maxindex"));
+                    return rs.getInt("maxindex");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
+    }
+
 
     public Runnable saveData(DDGSpeler data) throws SQLException {
         //Data wordt geupdate naar de database
         Runnable runnable = () -> {
-            try (Connection connection = main.openConnection()) {
-                for (VeilingItem item : data.getRemoveItemsDatabase()) {
-                    if (item.getId() != 0) {
+            //Balance opslaan
+            try (Connection connection = main.openConnection();
+                 PreparedStatement ps4 = connection.prepareStatement("UPDATE ddgspeler SET balance = " + main.getPlayerBank().get(data.getUuid()) + " WHERE uuid = '" + data.getUuid() + "';")) {
+                ps4.executeUpdate();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        };
+            /*try (Connection connection = main.openConnection()) {
+                //Veilingitems verwijderen
+                for (VeilingItem item : main.getItemsRemoveDatabase()) {
+                    if (item.getId() != 0 && item.getUuidOwner().equals(data.getUuid())) {
                         try (PreparedStatement ps1 = connection.prepareStatement("DELETE * FROM veilingitem WHERE itemindex = '" + item.getId() + "';")) {
                             ps1.executeUpdate();
                         } catch (SQLException e) {
                             e.printStackTrace();
                         }
                     }
+                    main.getItemsRemoveDatabase().remove(item);
                 }
+                //Veilingitems opslaan
                 for (VeilingItem item : data.getPersoonlijkeItems()) {
                     if (item.getId() != 0) {
                         try (PreparedStatement ps3 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
@@ -50,7 +80,7 @@ public class StoredDataHandler {
                                 "', '" + item.getUuidOwner() +
                                 "', " + item.getTimeOfDeletion() +
                                 ", '" + item.getItemStack().getType().toString() +
-                                "', " + item.getItemStack().getAmount() + ")")) {
+                                "', " + item.getItemStack().getAmount() + ") ")) {
 
                             ps2.executeUpdate();
                         } catch (SQLException ex) {
@@ -59,11 +89,10 @@ public class StoredDataHandler {
 
                     }
                 }
-
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
-        };
+        };*/
         return runnable;
     }
 
@@ -79,9 +108,9 @@ public class StoredDataHandler {
                             + uuid + "',DEFAULT)");
                     ps.executeUpdate();
                     ps.close();
-                    target = new DDGSpeler(uuid);
                     //Alle persoonlijke veilingitems worden toegevoegd aan de speler
-                }/* else {
+                }
+                /* else {
                     try (ResultSet rs2 = connection.prepareStatement("SELECT * FROM veilingitem WHERE owneruuid = '" + uuid + "';").executeQuery()) {
                         DDGSpeler ddgSpeler = new DDGSpeler(uuid);
                         while (rs2.next()) {
@@ -106,7 +135,7 @@ public class StoredDataHandler {
                         return null;
                     }
                 }*/
-                return target;
+                return new DDGSpeler(uuid);
             } catch (SQLException e) {
                 e.printStackTrace();
                 return null;
@@ -134,26 +163,36 @@ public class StoredDataHandler {
                     veilingItem.setUuidBidder(uuidBidder);
                     veilingItem.setHighestOffer(rs.getInt("highestoffer"));
 
-                    //Creation of DDGspeler who have items on auctionhouse
-                    DDGSpeler eigenaar;
-                    if (main.getPlayersWithItems().containsKey(uuidOwner)) {
-                        eigenaar = main.getPlayersWithItems().get(uuidOwner);
+                    //Creation of  DDGspeler who have items on auctionhouse
+                    if (uuidBidder == uuidOwner) {
+                        DDGSpeler eigenaarBieder = new DDGSpeler(uuidBidder);
+                        eigenaarBieder.getPersoonlijkeItems().add(veilingItem);
+                        eigenaarBieder.getBiddenItems().add(veilingItem);
+                        main.getPlayersWithItems().put(uuidOwner, eigenaarBieder);
+                        main.getPlayersWithBiddings().put(uuidBidder, eigenaarBieder);
                     } else {
-                        eigenaar = new DDGSpeler(uuidOwner);
-                    }
-                    eigenaar.getPersoonlijkeItems().add(veilingItem);
+                        DDGSpeler eigenaar;
+                        if (main.getPlayersWithItems().containsKey(uuidOwner)) {
+                            eigenaar = main.getPlayersWithItems().get(uuidOwner);
+                        } else {
+                            eigenaar = new DDGSpeler(uuidOwner);
+                            main.getPlayersWithItems().put(uuidOwner, eigenaar);
+                        }
+                        eigenaar.getPersoonlijkeItems().add(veilingItem);
 
-                    //Creation of DDGspeler who have bidden items
-                    DDGSpeler bieder;
-                    if (main.getPlayersWithItems().containsKey(uuidBidder)) {
-                        bieder = main.getPlayersWithItems().get(uuidBidder);
-                    } else if (main.getPlayersWithBiddings().containsKey(uuidBidder)) {
-                        bieder = main.getPlayersWithBiddings().get(uuidBidder);
-                    } else {
-                        bieder = new DDGSpeler(uuidBidder);
+                        //Creation of DDGspeler who have bidden items
+                        DDGSpeler bieder;
+                        if (main.getPlayersWithItems().containsKey(uuidBidder)) {
+                            bieder = main.getPlayersWithItems().get(uuidBidder);
+                        } else if (main.getPlayersWithBiddings().containsKey(uuidBidder)) {
+                            bieder = main.getPlayersWithBiddings().get(uuidBidder);
+                        } else {
+                            bieder = new DDGSpeler(uuidBidder);
+                            main.getPlayersWithBiddings().put(uuidBidder, bieder);
+                        }
+                        bieder.getBiddenItems().add(veilingItem);
+                        main.runTaskGiveItem(veilingItem, bieder, timeOfDeletion);
                     }
-                    bieder.getBiddenItems().add(veilingItem);
-                    main.runTaskGiveItem(veilingItem, bieder, timeOfDeletion - (System.currentTimeMillis() / 1000));
                     main.getVeilingItems().add(veilingItem);
                 }
 
@@ -165,6 +204,68 @@ public class StoredDataHandler {
                 }
 
 
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        };
+    }
+
+    public Runnable saveAuctionHouseAndBalance() {
+        return () -> {
+            System.out.println("SAVED");
+            try (Connection connection = main.openConnection()) {
+                //Veilingitems verwijderen
+                if (!main.getItemsRemoveDatabase().isEmpty()) {
+                    List<VeilingItem> toRemove = new ArrayList<>();
+                    for (VeilingItem item : main.getItemsRemoveDatabase()) {
+                        if (item.getId() != 0) {
+                            try (PreparedStatement ps1 = connection.prepareStatement("DELETE FROM veilingitem WHERE itemindex = " + item.getId() + ";")) {
+                                ps1.executeUpdate();
+                                System.out.println(item.getId());
+                            } catch (SQLException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        toRemove.add(item);
+                    }
+                    main.getItemsRemoveDatabase().removeAll(toRemove);
+                }
+                //Veilingitems opslaan
+                if (!main.getVeilingItems().isEmpty()) {
+                    for (VeilingItem item : main.getVeilingItems()) {
+                        try (ResultSet rs = connection.prepareStatement("SELECT COUNT(itemindex) FROM veilingitem WHERE itemindex = '" + item.getId() + "';").executeQuery()) {
+                            rs.next();
+                            if (rs.getInt(1) == 0) {
+                                try (PreparedStatement ps2 = connection.prepareStatement("INSERT INTO veilingitem(highestoffer,uuidbidder,uuidowner,timeofdeletion,material,quantity) VALUES (" + item.getHighestOffer() +
+                                        ", '" + item.getUuidBidder() +
+                                        "', '" + item.getUuidOwner() +
+                                        "', " + (item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000)) +
+                                        ", '" + item.getItemStack().getType().toString() +
+                                        "', " + item.getItemStack().getAmount() + ") ")) {
+
+                                    ps2.executeUpdate();
+                                } catch (SQLException ex) {
+                                    ex.printStackTrace();
+                                }
+                            } else {
+                                try (PreparedStatement ps3 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
+                                        + "',uuidowner = '" + item.getUuidOwner() + "',timeofdeletion = " + (item.getTimeOfDeletion() - System.currentTimeMillis() / 1000) + ", material = '" + item.getItemStack().getType()
+                                        + "',quantity = " + item.getItemStack().getAmount() + " WHERE itemindex = '" + item.getId() + "';")) {
+                                    ps3.executeUpdate();
+                                }
+                            }
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                //Balance opslaan
+                for (Map.Entry pl : main.getPlayerBank().entrySet())
+                    try (PreparedStatement ps4 = connection.prepareStatement("UPDATE ddgspeler SET balance = " + pl.getValue() + " WHERE uuid = '" + pl.getKey() + "';")) {
+                        ps4.executeUpdate();
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                    }
             } catch (SQLException e) {
                 e.printStackTrace();
             }

@@ -9,6 +9,7 @@ import be.lacratus.market.listeners.OnDisconnectListener;
 import be.lacratus.market.listeners.OnJoinListener;
 import be.lacratus.market.objects.DDGSpeler;
 import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.util.VeilingItemComparator;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -20,7 +21,6 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +38,7 @@ public final class Market extends JavaPlugin {
     private String password;
     private int port;
 
+    private int maxIndex;
     //Handlers
     private StoredDataHandler storedDataHandler;
 
@@ -49,10 +50,31 @@ public final class Market extends JavaPlugin {
     private HashMap<UUID, DDGSpeler> onlinePlayers;
     private HashMap<UUID, DDGSpeler> playersWithItems;
     private HashMap<UUID, DDGSpeler> playersWithBiddings;
+    private List<VeilingItem> itemsRemoveDatabase;
 
+    //utils
+    private VeilingItemComparator veilingItemComparator;
 
     @Override
     public void onEnable() {
+        //Databank creation
+        this.host = "localhost";
+        this.port = 3306;
+        this.database = "Market";
+        this.username = "root";
+        this.password = "";
+
+        this.storedDataHandler = new StoredDataHandler(this);
+
+        //Intialize lists/maps
+        this.veilingItemComparator = new VeilingItemComparator();
+        this.veilingItems = new PriorityQueue<>(1, new VeilingItemComparator());
+        this.veilingItems.comparator();
+        this.onlinePlayers = new HashMap<>();
+        this.playersWithItems = new HashMap<>();
+        this.playersWithBiddings = new HashMap<>();
+        this.itemsRemoveDatabase = new ArrayList<>();
+
         //Commands
         getCommand("market").setExecutor(new MarketCommand(this));
         getCommand("money").setExecutor(new MoneyCommand(this));
@@ -63,23 +85,18 @@ public final class Market extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new AuctionListener(this), this);
 
 
-        //Databank creation
-
-        this.host = "localhost";
-        this.port = 3306;
-        this.database = "Market";
-        this.username = "root";
-        this.password = "";
-        this.storedDataHandler = new StoredDataHandler(this);
         //Databank fill Auctionhouse and Hashmaps
         CompletableFuture.runAsync(storedDataHandler.fillAuctionHouseAndBank());
 
-        //
-        veilingItems = new PriorityQueue<>();
-        veilingItems.comparator();
-        onlinePlayers = new HashMap<>();
-        playersWithItems = new HashMap<>();
-        playersWithBiddings = new HashMap<>();
+        //get highest index
+        try {
+            storedDataHandler.getMaxIndex().thenAccept(this::setMaxindex);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        //Save auctionhouse to databank every ... minutes
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this, storedDataHandler.saveAuctionHouseAndBalance(), 20L * 15, 20L * 15);
 
 
         //Register VaultEconomy
@@ -97,6 +114,8 @@ public final class Market extends JavaPlugin {
     public void onDisable() {
         //Unregister VaultEconomy
         Bukkit.getServicesManager().unregister(Economy.class, economyImplementer);
+
+        storedDataHandler.saveAuctionHouseAndBalance();
     }
 
     public Connection openConnection() throws SQLException {
@@ -107,18 +126,6 @@ public final class Market extends JavaPlugin {
         System.out.println("Something went wrong when opening the connection");
         return null;
     }
-
-    public PreparedStatement prepareStatement(String query) {
-
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            return ps;
-        } catch (SQLException var3) {
-            var3.printStackTrace();
-        }
-
-        return null;
-    }
-
 
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {
@@ -134,10 +141,6 @@ public final class Market extends JavaPlugin {
         return econ != null;
     }
 
-    public static Connection getConnection() {
-        return connection;
-    }
-
     public StoredDataHandler getStoredDataHandler() {
         return storedDataHandler;
     }
@@ -148,6 +151,10 @@ public final class Market extends JavaPlugin {
 
     public PriorityQueue<VeilingItem> getVeilingItems() {
         return veilingItems;
+    }
+
+    public void setVeilingItems(PriorityQueue<VeilingItem> veilingItems) {
+        this.veilingItems = veilingItems;
     }
 
     public Economy getEcon() {
@@ -170,9 +177,22 @@ public final class Market extends JavaPlugin {
         return new ArrayList<>(priorityQueue);
     }
 
+    public List<VeilingItem> getItemsRemoveDatabase() {
+        return itemsRemoveDatabase;
+    }
+
     public HashMap<UUID, DDGSpeler> getPlayersWithBiddings() {
         return playersWithBiddings;
     }
+
+    public int getMaxIndex() {
+        return maxIndex;
+    }
+
+    public void setMaxindex(int maxIndex) {
+        this.maxIndex = maxIndex;
+    }
+
 
     public void runTaskGiveItem(VeilingItem veilingItem, DDGSpeler ddgSpeler, long timeLeft) {
         UUID uuid = ddgSpeler.getUuid();
@@ -181,24 +201,42 @@ public final class Market extends JavaPlugin {
                 this.getVeilingItems().remove(veilingItem);
                 ddgSpeler.getPersoonlijkeItems().remove(veilingItem);
                 ItemMeta itemMeta = veilingItem.getItemStack().getItemMeta();
+                System.out.println("Test 4: " + ddgSpeler);
                 itemMeta.setLore(null);
                 veilingItem.getItemStack().setItemMeta(itemMeta);
                 if (Bukkit.getPlayer(uuid) != null) {
                     Player ownerItem = Bukkit.getPlayer(uuid);
                     ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), veilingItem.getItemStack());
+                    this.getItemsRemoveDatabase().add(veilingItem);
                 } else {
-                    if (this.getPlayersWithBiddings().containsKey(uuid)) {
-                        ddgSpeler.getBiddenItems().add(veilingItem);
-                        this.getPlayersWithBiddings().put(uuid, ddgSpeler);
-                    } else {
-                        ddgSpeler.getBiddenItems().add(veilingItem);
-                        this.getPlayersWithBiddings().put(uuid, ddgSpeler);
-                    }
+                    ddgSpeler.getBiddenItems().add(veilingItem);
                 }
                 ddgSpeler.removebiddedItem(veilingItem);
-                ddgSpeler.getRemoveItemsDatabase().add(veilingItem);
+                updateLists(ddgSpeler);
             }
-        }, 20L * (timeLeft / 1000));
+        }, 20L * (timeLeft));
         veilingItem.setBukkitTask(bukkitTask);
     }
+
+    public void updateLists(DDGSpeler ddgSpeler) {
+        UUID uuid = ddgSpeler.getUuid();
+        this.getOnlinePlayers().put(uuid, ddgSpeler);
+        if (this.getPlayersWithBiddings().containsKey(uuid)) {
+            if (ddgSpeler.getBiddenItems().size() != 0) {
+                this.getPlayersWithBiddings().put(uuid, ddgSpeler);
+            } else {
+                this.getPlayersWithBiddings().remove(uuid);
+            }
+        }
+
+        if (this.getPlayersWithItems().containsKey(uuid)) {
+            if (ddgSpeler.getPersoonlijkeItems().size() != 0) {
+                this.getPlayersWithItems().put(uuid, ddgSpeler);
+            } else {
+                this.getPlayersWithItems().remove(uuid);
+            }
+        }
+    }
+
+
 }

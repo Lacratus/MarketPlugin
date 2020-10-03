@@ -57,7 +57,7 @@ public class AuctionHouse {
             //Create lore
             List<String> lores = new ArrayList<>();
             lores.add("Bid: " + item.getHighestOffer() + "€");
-            long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
+            long timeLeft = item.getTimeOfDeletion() - System.currentTimeMillis() / 1000;
             long[] timeList = onlineTimeToLong(timeLeft);
             lores.add("Hours: " + timeList[0] + ", Mintutes: " + timeList[1] + ", Seconds: " + timeList[2]);
             itemMeta.setLore(lores);
@@ -70,9 +70,9 @@ public class AuctionHouse {
 
     public long[] onlineTimeToLong(long timeInSeconds) {
         long hours = TimeUnit.SECONDS.toHours(timeInSeconds);
-        timeInSeconds -= TimeUnit.HOURS.toMillis(hours);
+        timeInSeconds -= TimeUnit.HOURS.toSeconds(hours);
         long minutes = TimeUnit.SECONDS.toMinutes(timeInSeconds);
-        timeInSeconds -= TimeUnit.MINUTES.toMillis(minutes);
+        timeInSeconds -= TimeUnit.MINUTES.toSeconds(minutes);
         long seconds = TimeUnit.SECONDS.toSeconds(timeInSeconds);
         return new long[]{hours, minutes, seconds};
     }

@@ -9,26 +9,16 @@ import java.util.UUID;
 
 public class DDGSpeler {
 
-    private Player player;
     private UUID uuid;
     private PriorityQueue<VeilingItem> persoonlijkeItems;
     private boolean isBidding;
     private VeilingItem bidVeilingItem;
     private List<VeilingItem> biddenItems;
-    private List<VeilingItem> removeItemsDatabase;
 
     public DDGSpeler(UUID uuid) {
         this.uuid = uuid;
         this.persoonlijkeItems = new PriorityQueue<>();
         this.biddenItems = new ArrayList<>();
-    }
-
-    public Player getPlayer() {
-        return player;
-    }
-
-    public void setPlayer(Player player) {
-        this.player = player;
     }
 
     public UUID getUuid() {
@@ -37,6 +27,10 @@ public class DDGSpeler {
 
     public PriorityQueue<VeilingItem> getPersoonlijkeItems() {
         return persoonlijkeItems;
+    }
+
+    public void setPersoonlijkeItems(PriorityQueue<VeilingItem> persoonlijkeItems) {
+        this.persoonlijkeItems = persoonlijkeItems;
     }
 
     public boolean isBidding() {
@@ -67,7 +61,4 @@ public class DDGSpeler {
         this.biddenItems.remove(veilingItem);
     }
 
-    public List<VeilingItem> getRemoveItemsDatabase() {
-        return removeItemsDatabase;
-    }
 }

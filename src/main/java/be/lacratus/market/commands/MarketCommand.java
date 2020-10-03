@@ -14,9 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 
 public class MarketCommand implements CommandExecutor {
@@ -49,13 +47,16 @@ public class MarketCommand implements CommandExecutor {
                     try {
                         int bid = Integer.parseInt(args[1]);
                         if (bid > 0) {
-                            if (player.getInventory().getItemInMainHand() == null) {
+                            ItemStack itemToSell = player.getInventory().getItemInMainHand();
+                            if (itemToSell.getType() == Material.AIR) {
                                 player.sendMessage("You need an item in your hand");
                                 return false;
                             }
                             //Creating VeilingItem
-                            ItemStack itemToSell = player.getInventory().getItemInMainHand();
                             VeilingItem veilingItem = new VeilingItem(itemToSell, uuid);
+                            main.setMaxindex(main.getMaxIndex() + 1);
+                            veilingItem.setId(main.getMaxIndex());
+                            System.out.println(main.getMaxIndex() + "Joined Auctionhouse");
                             veilingItem.setHighestOffer(bid);
                             veilingItem.setUuidOwner(uuid);
                             veilingItem.setUuidBidder(uuid);
@@ -63,20 +64,17 @@ public class MarketCommand implements CommandExecutor {
                             //Adding to Auctionhouse
                             main.getVeilingItems().add(veilingItem);
                             //Adding to Personal Items
-                            DDGSpeler ddgSpeler;
-                            if (main.getPlayersWithItems().containsKey(uuid)) {
-                                ddgSpeler = main.getPlayersWithItems().get(uuid);
-                            } else {
-                                ddgSpeler = main.getOnlinePlayers().get(uuid);
-                                main.getPlayersWithItems().put(uuid, ddgSpeler);
-                            }
+                            DDGSpeler ddgSpeler = main.getOnlinePlayers().get(uuid);
+
                             ddgSpeler.getPersoonlijkeItems().add(veilingItem);
                             ddgSpeler.addBiddeditem(veilingItem);
+                            //Test
+                            System.out.println("Test 1:" + veilingItem);
+                            //Update lists
                             main.getPlayersWithBiddings().put(uuid, ddgSpeler);
+                            main.getPlayersWithItems().put(uuid, ddgSpeler);
                             //remove timer
-                            long timeLeft = veilingItem.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
-                            System.out.println(timeLeft / 1000);
-                            main.runTaskGiveItem(veilingItem, ddgSpeler, timeLeft);
+                            main.runTaskGiveItem(veilingItem, ddgSpeler, 20);
 
 
                         } else {
@@ -88,7 +86,7 @@ public class MarketCommand implements CommandExecutor {
                 } else if (args[0].equalsIgnoreCase("bump")) {
                     try {
                         int numberOfItem = Integer.parseInt(args[1]);
-                        DDGSpeler ddgSpeler = main.getPlayersWithItems().get(uuid);
+                        DDGSpeler ddgSpeler = main.getOnlinePlayers().get(uuid);
                         List<VeilingItem> veilingItems = Market.priorityQueueToList(ddgSpeler.getPersoonlijkeItems());
                         VeilingItem veilingItem = veilingItems.get(numberOfItem - 1);
                         DDGSpeler highestbidder = main.getPlayersWithBiddings().get(veilingItem.getUuidBidder());
@@ -98,8 +96,10 @@ public class MarketCommand implements CommandExecutor {
                             main.getVeilingItems().add(veilingItem);
                             veilingItem.getBukkitTask().cancel();
 
-                            long timeLeft = veilingItem.getTimeOfDeletion() - System.currentTimeMillis();
+                            long timeLeft = veilingItem.getTimeOfDeletion() - System.currentTimeMillis() / 1000;
                             main.runTaskGiveItem(veilingItem, highestbidder, timeLeft);
+                        } else {
+                            player.sendMessage("U have already bumped this item once");
                         }
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -123,4 +123,9 @@ public class MarketCommand implements CommandExecutor {
                 "/Market sell <Price> - Sell item for certain price \n" +
                 "/Market bump <#> - Item to bump(Once per item)");
     }
+
+    /*public int getMaxIndex(){
+        VeilingItem veilingItem = Collections.max(main.getVeilingItems(), Comparator.comparing(s -> s.getId()));
+        return veilingItem.getId() + 1;
+    }*/
 }

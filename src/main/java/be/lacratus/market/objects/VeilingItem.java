@@ -13,38 +13,38 @@ public class VeilingItem implements Comparable<VeilingItem> {
     private int highestOffer;
     private UUID uuidBidder;
     private UUID uuidOwner;
-    private Long timeOfDeletion;
+    private long timeOfDeletion;
     private BukkitTask bukkitTask;
 
 
-    public boolean Bumped;
+    public boolean bumped;
 
     public VeilingItem(ItemStack itemStack, UUID uuidOwner) {
         this.itemStack = itemStack;
         this.uuidOwner = uuidOwner;
-        this.timeOfDeletion = (System.currentTimeMillis() / 1000) + 20L;
+        this.timeOfDeletion = 20L + System.currentTimeMillis() / 1000;
     }
 
-    public VeilingItem(ItemStack itemStack, UUID uuidOwner, long timeOfDeletion) {
+    public VeilingItem(ItemStack itemStack, UUID uuidOwner, long timeLeft) {
         this.itemStack = itemStack;
         this.uuidOwner = uuidOwner;
-        this.timeOfDeletion = timeOfDeletion;
+        this.timeOfDeletion = timeLeft + System.currentTimeMillis() / 1000;
     }
 
-    public VeilingItem(int id, ItemStack itemStack, UUID uuidOwner, long timeOfDeletion) {
+    public VeilingItem(int id, ItemStack itemStack, UUID uuidOwner, long timeLeft) {
         this.id = id;
         this.itemStack = itemStack;
         this.uuidOwner = uuidOwner;
-        this.timeOfDeletion = timeOfDeletion;
+        this.timeOfDeletion = timeLeft + System.currentTimeMillis() / 1000;
     }
 
     public boolean isBumped() {
-        return Bumped;
+        return bumped;
     }
 
     public void setBumped(boolean bumped) {
-        Bumped = bumped;
-        this.timeOfDeletion = System.currentTimeMillis() + 20000L;
+        this.bumped = bumped;
+        this.timeOfDeletion = 20L + System.currentTimeMillis() / 1000;
     }
 
     public ItemStack getItemStack() {
@@ -83,12 +83,21 @@ public class VeilingItem implements Comparable<VeilingItem> {
         this.uuidOwner = uuidOwner;
     }
 
-    public Long getTimeOfDeletion() {
+
+    public long getTimeOfDeletion() {
         return timeOfDeletion;
     }
 
     public int getId() {
         return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setTimeOfDeletion(long timeOfDeletion) {
+        this.timeOfDeletion = timeOfDeletion;
     }
 
     @Override
