@@ -26,7 +26,7 @@ public class OnDisconnectListener implements Listener {
         UUID uuid = e.getPlayer().getUniqueId();
         DDGSpeler speler = main.getOnlinePlayers().get(uuid);
 
-        CompletableFuture.runAsync(storedDataHandler.saveData(speler));
+        storedDataHandler.saveData(speler);
 
         main.getOnlinePlayers().remove(uuid);
     }

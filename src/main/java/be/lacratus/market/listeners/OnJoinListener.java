@@ -30,20 +30,21 @@ public class OnJoinListener implements Listener {
         } else {
             System.out.println("Account already existed");
         }
-        System.out.print("TEST?????");
+        System.out.print("TEST  ?????");
 
         //Fill onlinePlayers
 
         //Check if player gets item back
         DDGSpeler speler;
+        System.out.println(uuid);
+        System.out.println(main.getPlayersWithItems());
+        System.out.println(main.getPlayersWithItems().containsKey(uuid));
+        System.out.println(main.getPlayersWithBiddings());
+        System.out.println(main.getPlayersWithBiddings().containsKey(uuid));
         if (main.getPlayersWithItems().containsKey(uuid)) {
-            System.out.println("Hier 1");
+            System.out.println("Speler heeft items op de veiling: " + main.getPlayersWithBiddings().get(uuid).getBiddenItems());
             speler = main.getPlayersWithItems().get(uuid);
-            main.getOnlinePlayers().put(uuid, speler);
-        } else if (main.getPlayersWithBiddings().containsKey(uuid)) {
-            System.out.println("hier 2");
-            speler = main.getPlayersWithBiddings().get(uuid);
-            for (VeilingItem item : main.getPlayersWithBiddings().get(uuid).getBiddenItems()) {
+            for (VeilingItem item : main.getPlayersWithItems().get(uuid).getPersoonlijkeItems()) {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
                 if (timeLeft < 0) {
                     player.getInventory().setItem(player.getInventory().firstEmpty(), item.getItemStack());
@@ -51,9 +52,22 @@ public class OnJoinListener implements Listener {
                     main.getItemsRemoveDatabase().add(item);
                 }
             }
-            main.getOnlinePlayers().put(uuid, speler);
+            main.updateLists(speler);
+        } else if (main.getPlayersWithBiddings().containsKey(uuid)) {
+            System.out.println("Spelers heeft biedingen op de veilingen");
+            speler = main.getPlayersWithBiddings().get(uuid);
+            for (VeilingItem item : main.getPlayersWithBiddings().get(uuid).getBiddenItems()) {
+                long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
+                if (timeLeft < 0) {
+                    player.getInventory().setItem(player.getInventory().firstEmpty(), item.getItemStack());
+                    main.getPlayersWithBiddings().get(uuid).removebiddedItem(item);
+                    main.getItemsRemoveDatabase().add(item);
+                    System.out.println(main.getItemsRemoveDatabase());
+                }
+            }
+            main.updateLists(speler);
         } else {
-            System.out.println("HIer 3");
+            System.out.println("Speler heeft niks op de veiling staan");
             storedDataHandler.loadData(uuid).thenAccept(DDGspeler -> {
                 main.getOnlinePlayers().put(uuid, DDGspeler);
             }).exceptionally(throwable -> {

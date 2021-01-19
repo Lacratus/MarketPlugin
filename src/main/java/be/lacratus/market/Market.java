@@ -12,6 +12,7 @@ import be.lacratus.market.objects.VeilingItem;
 import be.lacratus.market.util.VeilingItemComparator;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -47,27 +48,26 @@ public final class Market extends JavaPlugin {
 
     //
     private PriorityQueue<VeilingItem> veilingItems;
-    private HashMap<UUID, DDGSpeler> onlinePlayers;
-    private HashMap<UUID, DDGSpeler> playersWithItems;
-    private HashMap<UUID, DDGSpeler> playersWithBiddings;
+    private Map<UUID, DDGSpeler> onlinePlayers;
+    private Map<UUID, DDGSpeler> playersWithItems;
+    private Map<UUID, DDGSpeler> playersWithBiddings;
     private List<VeilingItem> itemsRemoveDatabase;
-
-    //utils
-    private VeilingItemComparator veilingItemComparator;
 
     @Override
     public void onEnable() {
-        //Databank creation
-        this.host = "localhost";
-        this.port = 3306;
-        this.database = "Market";
-        this.username = "root";
-        this.password = "";
+        //Config - Databank creation
+        this.getConfig().options().copyDefaults();
+        saveDefaultConfig();
+        this.host = this.getConfig().getString("Host");
+        this.port = this.getConfig().getInt("Port");
+        this.database = this.getConfig().getString("Database");
+        this.username = this.getConfig().getString("Username");
+        this.password = this.getConfig().getString("Password");
 
         this.storedDataHandler = new StoredDataHandler(this);
 
         //Intialize lists/maps
-        this.veilingItemComparator = new VeilingItemComparator();
+        //utils
         this.veilingItems = new PriorityQueue<>(1, new VeilingItemComparator());
         this.veilingItems.comparator();
         this.onlinePlayers = new HashMap<>();
@@ -84,6 +84,8 @@ public final class Market extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new OnDisconnectListener(this), this);
         Bukkit.getPluginManager().registerEvents(new AuctionListener(this), this);
 
+        //reset Itemindex in database
+        storedDataHandler.resetItemIndex();
 
         //Databank fill Auctionhouse and Hashmaps
         CompletableFuture.runAsync(storedDataHandler.fillAuctionHouseAndBank());
@@ -114,7 +116,6 @@ public final class Market extends JavaPlugin {
     public void onDisable() {
         //Unregister VaultEconomy
         Bukkit.getServicesManager().unregister(Economy.class, economyImplementer);
-
         storedDataHandler.saveAuctionHouseAndBalance();
     }
 
@@ -153,23 +154,18 @@ public final class Market extends JavaPlugin {
         return veilingItems;
     }
 
-    public void setVeilingItems(PriorityQueue<VeilingItem> veilingItems) {
-        this.veilingItems = veilingItems;
-    }
 
-    public Economy getEcon() {
-        return econ;
-    }
+
 
     public EconomyImplementer getEconomyImplementer() {
         return economyImplementer;
     }
 
-    public HashMap<UUID, DDGSpeler> getOnlinePlayers() {
+    public Map<UUID, DDGSpeler> getOnlinePlayers() {
         return onlinePlayers;
     }
 
-    public HashMap<UUID, DDGSpeler> getPlayersWithItems() {
+    public Map<UUID, DDGSpeler> getPlayersWithItems() {
         return playersWithItems;
     }
 
@@ -181,7 +177,7 @@ public final class Market extends JavaPlugin {
         return itemsRemoveDatabase;
     }
 
-    public HashMap<UUID, DDGSpeler> getPlayersWithBiddings() {
+    public Map<UUID, DDGSpeler> getPlayersWithBiddings() {
         return playersWithBiddings;
     }
 
@@ -201,18 +197,20 @@ public final class Market extends JavaPlugin {
                 this.getVeilingItems().remove(veilingItem);
                 ddgSpeler.getPersoonlijkeItems().remove(veilingItem);
                 ItemMeta itemMeta = veilingItem.getItemStack().getItemMeta();
-                System.out.println("Test 4: " + ddgSpeler);
                 itemMeta.setLore(null);
                 veilingItem.getItemStack().setItemMeta(itemMeta);
                 if (Bukkit.getPlayer(uuid) != null) {
                     Player ownerItem = Bukkit.getPlayer(uuid);
                     ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), veilingItem.getItemStack());
                     this.getItemsRemoveDatabase().add(veilingItem);
+                    System.out.println(itemsRemoveDatabase);
                 } else {
                     ddgSpeler.getBiddenItems().add(veilingItem);
                 }
                 ddgSpeler.removebiddedItem(veilingItem);
-                updateLists(ddgSpeler);
+                if (getOnlinePlayers().containsValue(ddgSpeler)) {
+                    updateLists(ddgSpeler);
+                }
             }
         }, 20L * (timeLeft));
         veilingItem.setBukkitTask(bukkitTask);
