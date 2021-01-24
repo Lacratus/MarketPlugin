@@ -22,8 +22,8 @@ public class OnDisconnectListener implements Listener {
     }
 
     @EventHandler
-    public void onDisconnect(PlayerQuitEvent e) throws SQLException {
-        UUID uuid = e.getPlayer().getUniqueId();
+    public void onDisconnect(PlayerQuitEvent event) throws SQLException {
+        UUID uuid = event.getPlayer().getUniqueId();
         DDGSpeler speler = main.getOnlinePlayers().get(uuid);
 
         storedDataHandler.saveData(speler);

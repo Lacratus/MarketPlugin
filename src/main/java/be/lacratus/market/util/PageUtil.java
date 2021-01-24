@@ -9,7 +9,7 @@ import java.util.PriorityQueue;
 
 public class PageUtil {
 
-    public static List<VeilingItem> getPageItems(PriorityQueue<VeilingItem> items, int page, int spaces) {
+    public static List<VeilingItem> getPageItems(ArrayList<VeilingItem> items, int page, int spaces) {
         int upperBound = page * spaces;
         int lowerBound = upperBound - spaces;
 
@@ -17,8 +17,7 @@ public class PageUtil {
         for (int i = lowerBound; i < upperBound; i++) {
 
             try {
-                List<VeilingItem> itemsList = Market.priorityQueueToList(items);
-                newItems.add(itemsList.get(i));
+                newItems.add(items.get(i));
             } catch (IndexOutOfBoundsException ignored) {
             }
         }

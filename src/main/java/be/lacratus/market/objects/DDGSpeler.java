@@ -1,6 +1,5 @@
 package be.lacratus.market.objects;
 
-import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,9 +28,6 @@ public class DDGSpeler {
         return persoonlijkeItems;
     }
 
-    public void setPersoonlijkeItems(PriorityQueue<VeilingItem> persoonlijkeItems) {
-        this.persoonlijkeItems = persoonlijkeItems;
-    }
 
     public boolean isBidding() {
         return isBidding;
@@ -53,12 +49,5 @@ public class DDGSpeler {
         return biddenItems;
     }
 
-    public void addBiddeditem(VeilingItem veilingItem) {
-        this.biddenItems.add(veilingItem);
-    }
-
-    public void removebiddedItem(VeilingItem veilingItem) {
-        this.biddenItems.remove(veilingItem);
-    }
 
 }

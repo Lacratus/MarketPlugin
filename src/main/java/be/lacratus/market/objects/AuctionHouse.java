@@ -1,7 +1,8 @@
 package be.lacratus.market.objects;
 
-import be.lacratus.market.Market;
 import be.lacratus.market.util.PageUtil;
+import be.lacratus.market.util.SortByIndexAscending;
+import be.lacratus.market.util.SortByIndexDescending;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -13,13 +14,23 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.UUID;
+
 import java.util.concurrent.TimeUnit;
 
 public class AuctionHouse {
 
 
-    public AuctionHouse(Player player, PriorityQueue<VeilingItem> allItems, int page, String title) {
+    public AuctionHouse() {
+
+    }
+
+    public static void openAuctionHouse(Player player, PriorityQueue<VeilingItem> allItems, int page, String title) {
+        ArrayList<VeilingItem> items = new ArrayList<>(allItems);
+        if (title.equals("AuctionHouse")) {
+            items.sort(new SortByIndexAscending());
+        } else if (title.equals("Personal")) {
+            items.sort(new SortByIndexDescending());
+        }
         Inventory auctionHouse = Bukkit.createInventory(null, 54, title);
 
         //Get to previous page if possible
@@ -50,7 +61,7 @@ public class AuctionHouse {
 
         auctionHouse.setItem(53, nextPage);
         //Fill up AuctionHouse
-        for (VeilingItem item : PageUtil.getPageItems(allItems, page, 45)) {
+        for (VeilingItem item : PageUtil.getPageItems(items, page, 45)) {
             //Get Itemstack
             ItemStack itemstack = item.getItemStack();
             ItemMeta itemMeta = itemstack.getItemMeta();
@@ -59,7 +70,7 @@ public class AuctionHouse {
             lores.add("Bid: " + item.getHighestOffer() + "€");
             long timeLeft = item.getTimeOfDeletion() - System.currentTimeMillis() / 1000;
             long[] timeList = onlineTimeToLong(timeLeft);
-            lores.add("Hours: " + timeList[0] + ", Mintutes: " + timeList[1] + ", Seconds: " + timeList[2]);
+            lores.add("Hours: " + timeList[0] + ", Minutes: " + timeList[1] + ", Seconds: " + timeList[2]);
             itemMeta.setLore(lores);
             itemstack.setItemMeta(itemMeta);
             //Set Item
@@ -68,7 +79,7 @@ public class AuctionHouse {
         player.openInventory(auctionHouse);
     }
 
-    public long[] onlineTimeToLong(long timeInSeconds) {
+    public static long[] onlineTimeToLong(long timeInSeconds) {
         long hours = TimeUnit.SECONDS.toHours(timeInSeconds);
         timeInSeconds -= TimeUnit.HOURS.toSeconds(hours);
         long minutes = TimeUnit.SECONDS.toMinutes(timeInSeconds);
