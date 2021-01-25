@@ -1,7 +1,6 @@
 package be.lacratus.market.util;
 
-import be.lacratus.market.Market;
-import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.objects.AuctionItem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +8,11 @@ import java.util.PriorityQueue;
 
 public class PageUtil {
 
-    public static List<VeilingItem> getPageItems(ArrayList<VeilingItem> items, int page, int spaces) {
+    public static List<AuctionItem> getPageItems(ArrayList<AuctionItem> items, int page, int spaces) {
         int upperBound = page * spaces;
         int lowerBound = upperBound - spaces;
 
-        List<VeilingItem> newItems = new ArrayList<>();
+        List<AuctionItem> newItems = new ArrayList<>();
         for (int i = lowerBound; i < upperBound; i++) {
 
             try {
@@ -25,7 +24,7 @@ public class PageUtil {
         return newItems;
     }
 
-    public static boolean isPageValid(PriorityQueue<VeilingItem> items, int page, int spaces) {
+    public static boolean isPageValid(PriorityQueue<AuctionItem> items, int page, int spaces) {
         {
             if (page <= 0) {
                 return false;

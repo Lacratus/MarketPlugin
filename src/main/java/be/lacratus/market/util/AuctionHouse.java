@@ -1,8 +1,6 @@
-package be.lacratus.market.objects;
+package be.lacratus.market.util;
 
-import be.lacratus.market.util.PageUtil;
-import be.lacratus.market.util.SortByIndexAscending;
-import be.lacratus.market.util.SortByIndexDescending;
+import be.lacratus.market.objects.AuctionItem;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -24,8 +22,8 @@ public class AuctionHouse {
 
     }
 
-    public static void openAuctionHouse(Player player, PriorityQueue<VeilingItem> allItems, int page, String title) {
-        ArrayList<VeilingItem> items = new ArrayList<>(allItems);
+    public static void openAuctionHouse(Player player, PriorityQueue<AuctionItem> allItems, int page, String title) {
+        ArrayList<AuctionItem> items = new ArrayList<>(allItems);
         if (title.equals("AuctionHouse")) {
             items.sort(new SortByIndexAscending());
         } else if (title.equals("Personal")) {
@@ -60,13 +58,13 @@ public class AuctionHouse {
         nextPage.setItemMeta(nextMeta);
 
         auctionHouse.setItem(53, nextPage);
-        //Fill up AuctionHouse
-        for (VeilingItem item : PageUtil.getPageItems(items, page, 45)) {
+        //Fill up AuctionHouse and add lores
+        for (AuctionItem item : PageUtil.getPageItems(items, page, 45)) {
             //Get Itemstack
             ItemStack itemstack = item.getItemStack();
             ItemMeta itemMeta = itemstack.getItemMeta();
             //Create lore
-            List<String> lores = new ArrayList<>();
+            List<String> lores = itemMeta.getLore();
             lores.add("Bid: " + item.getHighestOffer() + "€");
             long timeLeft = item.getTimeOfDeletion() - System.currentTimeMillis() / 1000;
             long[] timeList = onlineTimeToLong(timeLeft);
@@ -77,6 +75,19 @@ public class AuctionHouse {
             auctionHouse.setItem(auctionHouse.firstEmpty(), item.getItemStack());
         }
         player.openInventory(auctionHouse);
+
+        //remove lores
+        for (AuctionItem item : PageUtil.getPageItems(items, page, 45)) {
+            //Get Itemstack
+            ItemStack itemstack = item.getItemStack();
+            ItemMeta itemMeta = itemstack.getItemMeta();
+            //remove Auction lore
+            List<String> lores = itemMeta.getLore();
+            lores.remove(lores.size() - 1);
+            lores.remove(lores.size() - 1);
+            itemMeta.setLore(lores);
+            itemstack.setItemMeta(itemMeta);
+        }
     }
 
     public static long[] onlineTimeToLong(long timeInSeconds) {

@@ -2,8 +2,8 @@ package be.lacratus.market.listeners;
 
 import be.lacratus.market.Market;
 import be.lacratus.market.data.StoredDataHandler;
-import be.lacratus.market.objects.DDGSpeler;
-import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.objects.DDGPlayer;
+import be.lacratus.market.objects.AuctionItem;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -36,15 +36,12 @@ public class OnJoinListener implements Listener {
         //Fill onlinePlayers
 
         //Check if player gets item back
-        DDGSpeler speler;
-        List<VeilingItem> veilingItems;
-        System.out.println("OnJoiNListener: " + main.getPlayersWithBiddings().containsKey(uuid));
+        DDGPlayer speler;
+        List<AuctionItem> auctionItems;
         if (main.getPlayersWithItems().containsKey(uuid)) {
-            System.out.println("Speler heeft items op de veiling: " + main.getPlayersWithItems().get(uuid).getBiddenItems());
             speler = main.getPlayersWithItems().get(uuid);
-            veilingItems = new ArrayList<>(main.getPlayersWithItems().get(uuid).getBiddenItems());
-            for (VeilingItem item : veilingItems) {
-                System.out.println(item);
+            auctionItems = new ArrayList<>(main.getPlayersWithItems().get(uuid).getBiddenItems());
+            for (AuctionItem item : auctionItems) {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
                 if (timeLeft < 0) {
                     player.getInventory().setItem(player.getInventory().firstEmpty(), item.getItemStack());
@@ -54,23 +51,21 @@ public class OnJoinListener implements Listener {
             }
             main.getOnlinePlayers().put(uuid, speler);
             main.updateLists(speler);
+
         } else if (main.getPlayersWithBiddings().containsKey(uuid)) {
-            System.out.println("Spelers heeft biedingen op de veilingen");
             speler = main.getPlayersWithBiddings().get(uuid);
-            veilingItems = new ArrayList<>(main.getPlayersWithBiddings().get(uuid).getBiddenItems());
-            for (VeilingItem item : veilingItems) {
+            auctionItems = new ArrayList<>(main.getPlayersWithBiddings().get(uuid).getBiddenItems());
+            for (AuctionItem item : auctionItems) {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
                 if (timeLeft < 0) {
-                    player.getInventory().setItem(player.getInventory().firstEmpty(), item.getItemStack());
+                    player.sendMessage("You are getting a item from the auction, get some inventory space");
+                    main.giveItemWhenInventoryFull(item, speler, 30);
                     main.getPlayersWithBiddings().get(uuid).getBiddenItems().remove(item);
-                    main.getItemsRemoveDatabase().add(item);
-                    System.out.println(main.getItemsRemoveDatabase());
                 }
             }
             main.getOnlinePlayers().put(uuid, speler);
             main.updateLists(speler);
         } else {
-            System.out.println("Speler heeft niks op de veiling staan");
             storedDataHandler.loadData(uuid).thenAccept(DDGspeler ->
                     main.getOnlinePlayers().put(uuid, DDGspeler)).exceptionally(throwable -> {
                 throwable.printStackTrace();
