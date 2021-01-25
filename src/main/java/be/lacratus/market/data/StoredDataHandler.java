@@ -117,14 +117,14 @@ public class StoredDataHandler {
                             Bidder.getBiddenItems().add(auctionItem);
                             main.updateLists(Bidder);
                         } else {
-                            DDGPlayer eigenaar;
+                            DDGPlayer owner;
                             if (main.getPlayersWithItems().containsKey(uuidOwner)) {
-                                eigenaar = main.getPlayersWithItems().get(uuidOwner);
+                                owner = main.getPlayersWithItems().get(uuidOwner);
                             } else {
-                                eigenaar = new DDGPlayer(uuidOwner);
-                                main.getPlayersWithItems().put(uuidOwner, eigenaar);
+                                owner = new DDGPlayer(uuidOwner);
+                                main.getPlayersWithItems().put(uuidOwner, owner);
                             }
-                            eigenaar.getPersonalItems().add(auctionItem);
+                            owner.getPersonalItems().add(auctionItem);
 
                             //Creation of DDGPlayer who have bidden items
                             if (main.getPlayersWithItems().containsKey(uuidBidder)) {
@@ -164,7 +164,7 @@ public class StoredDataHandler {
             System.out.println("SAVED");
 
             try (Connection connection = main.openConnection()) {
-                //Veilingitems opslaan
+                // Save AuctionItems
                 if (!main.getAuctionItems().isEmpty()) {
                     List<AuctionItem> auctionItems = new ArrayList<>(main.getAuctionItems());
                     auctionItems.sort(new SortByIndexAscending());
@@ -192,9 +192,7 @@ public class StoredDataHandler {
                                     ex.printStackTrace();
                                 }
                             } else {
-                                /*try (PreparedStatement ps2 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
-                                        + "',uuidowner = '" + item.getUuidOwner() + "',timeofdeletion = " + (item.getTimeOfDeletion() - System.currentTimeMillis() / 1000) + ", material = '" + item.getItemStack().getType()
-                                        + "',quantity = " + item.getItemStack().getAmount() + ", bumped = " + bumped + " WHERE itemindex = " + item.getId() + ";")) {*/
+
                                 try (PreparedStatement ps2 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
                                         + "',uuidowner = '" + item.getUuidOwner() + "',timeofdeletion = " + (item.getTimeOfDeletion() - System.currentTimeMillis() / 1000) + ", itemstack = '" + ItemStackSerializer.ItemStackToString(item.getItemStack())
                                         + "', bumped = " + bumped + " WHERE itemindex = " + item.getId() + ";")) {
@@ -211,7 +209,6 @@ public class StoredDataHandler {
                 // Removing AuctionItems
                 if (!main.getItemsRemoveDatabase().isEmpty()) {
                     List<AuctionItem> removeAuctionItems = new ArrayList<>(main.getItemsRemoveDatabase());
-                    //removeVeilingItems.sort(new SortByIndex());
                     List<AuctionItem> toRemove = new ArrayList<>();
                     for (AuctionItem item : removeAuctionItems) {
                         if (item.getId() != 0) {
@@ -226,7 +223,7 @@ public class StoredDataHandler {
                     main.getItemsRemoveDatabase().removeAll(toRemove);
                 }
 
-                //Balance opslaan
+                // Save Balance
                 for (Map.Entry<UUID, Double> pl : main.getPlayerBank().entrySet())
                     try (PreparedStatement ps = connection.prepareStatement("UPDATE ddgspeler SET balance = " + pl.getValue() + " WHERE uuid = '" + pl.getKey() + "';")) {
                         ps.executeUpdate();

@@ -58,7 +58,7 @@ public class AuctionHouse {
         nextPage.setItemMeta(nextMeta);
 
         auctionHouse.setItem(53, nextPage);
-        //Fill up AuctionHouse and add lores
+        // Fill up AuctionHouse and add lores
         for (AuctionItem item : PageUtil.getPageItems(items, page, 45)) {
             //Get Itemstack
             ItemStack itemstack = item.getItemStack();
@@ -76,12 +76,12 @@ public class AuctionHouse {
         }
         player.openInventory(auctionHouse);
 
-        //remove lores
+        // Remove lores
         for (AuctionItem item : PageUtil.getPageItems(items, page, 45)) {
-            //Get Itemstack
+            // Get Itemstack
             ItemStack itemstack = item.getItemStack();
             ItemMeta itemMeta = itemstack.getItemMeta();
-            //remove Auction lore
+            // Remove Auction lore
             List<String> lores = itemMeta.getLore();
             lores.remove(lores.size() - 1);
             lores.remove(lores.size() - 1);

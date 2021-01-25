@@ -44,7 +44,7 @@ public class MarketCommand implements CommandExecutor {
                 AuctionHouse.openAuctionHouse(player, ddgPlayer.getPersonalItems(), 1, "Personal");
                 // Show lists of Main, check on memory leaks
             } else if (args[0].equalsIgnoreCase("debug")) {
-                sender.sendMessage("Veilingitems: " + main.getAuctionItems() + ";");
+                sender.sendMessage("AuctionItems: " + main.getAuctionItems() + ";");
                 sender.sendMessage("Owners: " + main.getPlayersWithItems() + ";");
                 sender.sendMessage("Bidders: " + main.getPlayersWithBiddings() + ";");
                 sender.sendMessage("Online: " + main.getOnlinePlayers() + ";");
@@ -169,7 +169,7 @@ public class MarketCommand implements CommandExecutor {
     public void sendHelpMessage(Player player) {
         player.sendMessage("/Market - Opens auctionhouse \n" +
                 "/Market personal - Watch personal items \n" +
-                "/Market sell <Price> <Time> - Sell item for certain price, minimum of 30 seconds on auctionhouse \n" +
+                "/Market sell <Price> <Time> - Sell item for certain price, minimum of 90 seconds on auctionhouse \n" +
                 "/Market bump <#> - Item to bump(Once per item)");
     }
 }

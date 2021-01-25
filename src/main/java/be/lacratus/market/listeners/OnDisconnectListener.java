@@ -23,9 +23,9 @@ public class OnDisconnectListener implements Listener {
     @EventHandler
     public void onDisconnect(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        DDGPlayer speler = main.getOnlinePlayers().get(uuid);
+        DDGPlayer player = main.getOnlinePlayers().get(uuid);
 
-        storedDataHandler.saveData(speler);
+        storedDataHandler.saveData(player);
 
         main.getOnlinePlayers().remove(uuid);
     }

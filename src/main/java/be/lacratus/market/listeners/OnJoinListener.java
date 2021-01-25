@@ -36,10 +36,10 @@ public class OnJoinListener implements Listener {
         //Fill onlinePlayers
 
         //Check if player gets item back
-        DDGPlayer speler;
+        DDGPlayer ddgPlayer;
         List<AuctionItem> auctionItems;
         if (main.getPlayersWithItems().containsKey(uuid)) {
-            speler = main.getPlayersWithItems().get(uuid);
+            ddgPlayer = main.getPlayersWithItems().get(uuid);
             auctionItems = new ArrayList<>(main.getPlayersWithItems().get(uuid).getBiddenItems());
             for (AuctionItem item : auctionItems) {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
@@ -49,22 +49,22 @@ public class OnJoinListener implements Listener {
                     main.getItemsRemoveDatabase().add(item);
                 }
             }
-            main.getOnlinePlayers().put(uuid, speler);
-            main.updateLists(speler);
+            main.getOnlinePlayers().put(uuid, ddgPlayer);
+            main.updateLists(ddgPlayer);
 
         } else if (main.getPlayersWithBiddings().containsKey(uuid)) {
-            speler = main.getPlayersWithBiddings().get(uuid);
+            ddgPlayer = main.getPlayersWithBiddings().get(uuid);
             auctionItems = new ArrayList<>(main.getPlayersWithBiddings().get(uuid).getBiddenItems());
             for (AuctionItem item : auctionItems) {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
                 if (timeLeft < 0) {
                     player.sendMessage("You are getting a item from the auction, get some inventory space");
-                    main.giveItemWhenInventoryFull(item, speler, 30);
+                    main.giveItemWhenInventoryFull(item, ddgPlayer, 30);
                     main.getPlayersWithBiddings().get(uuid).getBiddenItems().remove(item);
                 }
             }
-            main.getOnlinePlayers().put(uuid, speler);
-            main.updateLists(speler);
+            main.getOnlinePlayers().put(uuid, ddgPlayer);
+            main.updateLists(ddgPlayer);
         } else {
             storedDataHandler.loadData(uuid).thenAccept(DDGspeler ->
                     main.getOnlinePlayers().put(uuid, DDGspeler)).exceptionally(throwable -> {

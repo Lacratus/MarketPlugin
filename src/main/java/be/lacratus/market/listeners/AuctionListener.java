@@ -137,9 +137,6 @@ public class AuctionListener implements Listener {
                 // Create newBidder
                 auctionItem.setHighestOffer(bidding);
                 auctionItem.setUuidBidder(uuid);
-                            /*List<String> lores = veilingItem.getLore();
-                            String bidLore = "Bid: " + bidding;
-                            lores.set(0, bidLore);*/
                 ddgPlayer.getBiddenItems().add(auctionItem);
                 main.getPlayersWithBiddings().put(uuid, ddgPlayer);
                 main.updateLists(ddgPlayer);
