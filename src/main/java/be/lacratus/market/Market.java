@@ -7,8 +7,8 @@ import be.lacratus.market.data.StoredDataHandler;
 import be.lacratus.market.listeners.AuctionListener;
 import be.lacratus.market.listeners.OnDisconnectListener;
 import be.lacratus.market.listeners.OnJoinListener;
-import be.lacratus.market.objects.DDGSpeler;
-import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.objects.AuctionItem;
+import be.lacratus.market.objects.DDGPlayer;
 import be.lacratus.market.util.SortByIndexAscending;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -45,11 +45,11 @@ public final class Market extends JavaPlugin {
     private EconomyImplementer economyImplementer;
 
     //
-    private PriorityQueue<VeilingItem> veilingItems;
-    private Map<UUID, DDGSpeler> onlinePlayers;
-    private Map<UUID, DDGSpeler> playersWithItems;
-    private Map<UUID, DDGSpeler> playersWithBiddings;
-    private List<VeilingItem> itemsRemoveDatabase;
+    private PriorityQueue<AuctionItem> auctionItems;
+    private Map<UUID, DDGPlayer> onlinePlayers;
+    private Map<UUID, DDGPlayer> playersWithItems;
+    private Map<UUID, DDGPlayer> playersWithBiddings;
+    private List<AuctionItem> itemsRemoveDatabase;
 
     @Override
     public void onEnable() {
@@ -66,8 +66,8 @@ public final class Market extends JavaPlugin {
 
         //Intialize lists/maps
         //utils
-        this.veilingItems = new PriorityQueue<>(1, new SortByIndexAscending());
-        this.veilingItems.comparator();
+        this.auctionItems = new PriorityQueue<>(1, new SortByIndexAscending());
+        this.auctionItems.comparator();
         this.onlinePlayers = new HashMap<>();
         this.playersWithItems = new HashMap<>();
         this.playersWithBiddings = new HashMap<>();
@@ -123,12 +123,10 @@ public final class Market extends JavaPlugin {
 
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {
-            System.out.println("1");
             return false;
         }
         RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
         if (rsp == null) {
-            System.out.println("2");
             return false;
         }
         Economy econ = rsp.getProvider();
@@ -143,8 +141,8 @@ public final class Market extends JavaPlugin {
         return playerBank;
     }
 
-    public PriorityQueue<VeilingItem> getVeilingItems() {
-        return veilingItems;
+    public PriorityQueue<AuctionItem> getAuctionItems() {
+        return auctionItems;
     }
 
 
@@ -152,23 +150,23 @@ public final class Market extends JavaPlugin {
         return economyImplementer;
     }
 
-    public Map<UUID, DDGSpeler> getOnlinePlayers() {
+    public Map<UUID, DDGPlayer> getOnlinePlayers() {
         return onlinePlayers;
     }
 
-    public Map<UUID, DDGSpeler> getPlayersWithItems() {
+    public Map<UUID, DDGPlayer> getPlayersWithItems() {
         return playersWithItems;
     }
 
-    public static List<VeilingItem> priorityQueueToList(PriorityQueue<VeilingItem> priorityQueue) {
+    public static List<AuctionItem> priorityQueueToList(PriorityQueue<AuctionItem> priorityQueue) {
         return new ArrayList<>(priorityQueue);
     }
 
-    public List<VeilingItem> getItemsRemoveDatabase() {
+    public List<AuctionItem> getItemsRemoveDatabase() {
         return itemsRemoveDatabase;
     }
 
-    public Map<UUID, DDGSpeler> getPlayersWithBiddings() {
+    public Map<UUID, DDGPlayer> getPlayersWithBiddings() {
         return playersWithBiddings;
     }
 
@@ -180,57 +178,86 @@ public final class Market extends JavaPlugin {
         this.maxIndex = maxIndex;
     }
 
-
-    public void runTaskGiveItem(VeilingItem veilingItem, DDGSpeler ddgSpeler, long timeLeft) {
-        System.out.println("Test 1.2: " + ddgSpeler.getBiddenItems());
-        UUID uuid = ddgSpeler.getUuid();
+    //Used for bringing/returning items
+    public void runTaskGiveItem(AuctionItem auctionItem, DDGPlayer ddgPlayer, long timeLeft) {
         BukkitTask bukkitTask = Bukkit.getScheduler().runTaskLater(this, () -> {
-            this.getVeilingItems().remove(veilingItem);
-            DDGSpeler oldOwner = getPlayersWithItems().get(veilingItem.getUuidOwner());
-            oldOwner.getPersoonlijkeItems().remove(veilingItem);
-            ItemMeta itemMeta = veilingItem.getItemStack().getItemMeta();
-            itemMeta.setLore(null);
-            veilingItem.getItemStack().setItemMeta(itemMeta);
-            if (Bukkit.getPlayer(uuid) != null) {
-                Player ownerItem = Bukkit.getPlayer(uuid);
-                ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), veilingItem.getItemStack());
-                getItemsRemoveDatabase().add(veilingItem);
-            } else {
-                ddgSpeler.getBiddenItems().add(veilingItem);
-            }
-            System.out.println("Test 2: " + ddgSpeler.getBiddenItems());
-            ddgSpeler.getBiddenItems().remove(veilingItem);
-            System.out.println("Test 3: " + ddgSpeler.getBiddenItems());
+            UUID uuid = ddgPlayer.getUuid();
+            Player ownerItem = Bukkit.getPlayer(uuid);
 
-            //update van lijsten
-            updateLists(ddgSpeler);
-            if (ddgSpeler.getUuid() != oldOwner.getUuid()) {
+
+            getAuctionItems().remove(auctionItem);
+            DDGPlayer oldOwner = getPlayersWithItems().get(auctionItem.getUuidOwner());
+            oldOwner.getPersonalItems().remove(auctionItem);
+            ItemMeta itemMeta = auctionItem.getItemStack().getItemMeta();
+            List<String> lores = itemMeta.getLore();
+            auctionItem.getItemStack().setItemMeta(itemMeta);
+            if (Bukkit.getPlayer(uuid) != null) {
+                if (ownerItem.getInventory().firstEmpty() != -1) {
+                    ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), auctionItem.getItemStack());
+                    getItemsRemoveDatabase().add(auctionItem);
+                } else {
+                    giveItemWhenInventoryFull(auctionItem, ddgPlayer, 30);
+                    Bukkit.getPlayer(uuid).sendMessage("Your inventor is full, We are trying again in 30 seconds");
+                }
+            } else {
+                ddgPlayer.getBiddenItems().add(auctionItem);
+            }
+            ddgPlayer.getBiddenItems().remove(auctionItem);
+
+            //update of lists
+            updateLists(ddgPlayer);
+            if (ddgPlayer.getUuid() != oldOwner.getUuid()) {
                 updateLists(oldOwner);
-                //Geld gaat naar oude eigenaar
-                getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldOwner.getUuid()), veilingItem.getHighestOffer());
+                //Money goes to old owner
+                getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldOwner.getUuid()), auctionItem.getHighestOffer());
             }
 
         }, 20L * (timeLeft));
-        veilingItem.setBukkitTask(bukkitTask);
+        auctionItem.setBukkitTask(bukkitTask);
     }
 
-    public void updateLists(DDGSpeler ddgSpeler) {
-        UUID uuid = ddgSpeler.getUuid();
-        if (getOnlinePlayers().containsKey(ddgSpeler.getUuid())) {
-            getOnlinePlayers().put(uuid, ddgSpeler);
-        }
-        System.out.println("Has biddenitems: " + getPlayersWithBiddings().containsKey(uuid));
-        if (ddgSpeler.getBiddenItems().size() != 0) {
-            getPlayersWithBiddings().put(uuid, ddgSpeler);
-        } else getPlayersWithBiddings().remove(uuid);
-        System.out.println("Has biddenitems: " + getPlayersWithBiddings().containsKey(uuid));
-        System.out.println("Has persoonlijke items: " + getPlayersWithItems().containsKey(uuid));
+    //used when inventory is full or when filling the auctionhouse on startup
+    public void giveItemWhenInventoryFull(AuctionItem auctionItem, DDGPlayer ddgPlayer, long timeLeft) {
+        UUID uuid = ddgPlayer.getUuid();
+        Player ownerItem = Bukkit.getPlayer(uuid);
+        DDGPlayer oldOwner = getPlayersWithItems().get(auctionItem.getUuidOwner());
+        BukkitTask bukkitTask = Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (Bukkit.getPlayer(uuid) != null) {
+                if (ownerItem.getInventory().firstEmpty() != -1) {
+                    ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), auctionItem.getItemStack());
+                    getItemsRemoveDatabase().add(auctionItem);
+                } else {
+                    Bukkit.getPlayer(uuid).sendMessage("Your inventor is full, We are trying again in 30 seconds");
+                    giveItemWhenInventoryFull(auctionItem, ddgPlayer, 30);
+                }
+            } else {
+                ddgPlayer.getBiddenItems().add(auctionItem);
+            }
+            ddgPlayer.getBiddenItems().remove(auctionItem);
 
-        if (ddgSpeler.getPersoonlijkeItems().size() != 0) {
-            getPlayersWithItems().put(uuid, ddgSpeler);
+            //update of lists
+            updateLists(ddgPlayer);
+            if (oldOwner != null && ddgPlayer.getUuid() != oldOwner.getUuid()) {
+                updateLists(oldOwner);
+            }
+
+        }, 20L * (timeLeft));
+        auctionItem.setBukkitTask(bukkitTask);
+    }
+
+    public void updateLists(DDGPlayer ddgPlayer) {
+        UUID uuid = ddgPlayer.getUuid();
+        if (getOnlinePlayers().containsKey(ddgPlayer.getUuid())) {
+            getOnlinePlayers().put(uuid, ddgPlayer);
+        }
+        if (ddgPlayer.getBiddenItems().size() != 0) {
+            getPlayersWithBiddings().put(uuid, ddgPlayer);
+        } else getPlayersWithBiddings().remove(uuid);
+
+        if (ddgPlayer.getPersonalItems().size() != 0) {
+            getPlayersWithItems().put(uuid, ddgPlayer);
         } else getPlayersWithItems().remove(uuid);
 
-        System.out.println("Has persoonlijke items: " + getPlayersWithItems().containsKey(uuid));
 
     }
 

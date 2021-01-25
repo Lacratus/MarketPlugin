@@ -2,14 +2,13 @@ package be.lacratus.market.listeners;
 
 import be.lacratus.market.Market;
 import be.lacratus.market.data.StoredDataHandler;
-import be.lacratus.market.objects.DDGSpeler;
+import be.lacratus.market.objects.DDGPlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.sql.SQLException;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 public class OnDisconnectListener implements Listener {
 
@@ -22,11 +21,11 @@ public class OnDisconnectListener implements Listener {
     }
 
     @EventHandler
-    public void onDisconnect(PlayerQuitEvent event) throws SQLException {
+    public void onDisconnect(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        DDGSpeler speler = main.getOnlinePlayers().get(uuid);
+        DDGPlayer player = main.getOnlinePlayers().get(uuid);
 
-        storedDataHandler.saveData(speler);
+        storedDataHandler.saveData(player);
 
         main.getOnlinePlayers().remove(uuid);
     }

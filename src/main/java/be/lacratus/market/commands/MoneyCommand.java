@@ -18,20 +18,22 @@ public class MoneyCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("You have to be a player");
+            return false;
+        }
+
         if (args.length == 0) {
-            if (sender instanceof Player) {
-                OfflinePlayer player = (OfflinePlayer) sender;
-                sender.sendMessage(main.getEconomyImplementer().getBalance(player) + "");
-            } else {
-                System.out.println("Console is not a player");
-            }
+            OfflinePlayer player = (OfflinePlayer) sender;
+            sender.sendMessage(main.getEconomyImplementer().getBalance(player) + "");
             return true;
         }
         if (args.length == 1) {
             try {
                 Player player = Bukkit.getPlayer(args[0]);
                 double balance = main.getEconomyImplementer().getBalance(player);
-                sender.sendMessage(main.getEconomyImplementer().getBalance(player) + "");
+                sender.sendMessage(balance + "");
             } catch (Exception e) {
                 e.printStackTrace();
             }

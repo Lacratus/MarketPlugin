@@ -1,11 +1,11 @@
 package be.lacratus.market.data;
 
 import be.lacratus.market.Market;
-import be.lacratus.market.objects.DDGSpeler;
-import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.objects.DDGPlayer;
+import be.lacratus.market.objects.AuctionItem;
+import be.lacratus.market.util.ItemStackSerializer;
 import be.lacratus.market.util.SortByIndexAscending;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 import java.sql.Connection;
@@ -21,20 +21,19 @@ import java.util.concurrent.CompletableFuture;
 public class StoredDataHandler {
 
     private Market main;
-    private DDGSpeler target;
 
     public StoredDataHandler(Market main) {
         this.main = main;
     }
 
-    public CompletableFuture<Integer> getMaxIndex(Connection connection) throws SQLException {
+    // Return of MaxIndex in database
+    public CompletableFuture<Integer> getMaxIndex(Connection connection) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 try (PreparedStatement ps = connection.prepareStatement("SELECT MAX(itemindex) as maxindex FROM veilingitem");
                      ResultSet rs = ps.executeQuery()) {
                     rs.next();
-                    int maxIndex = rs.getInt("maxindex");
-                    return maxIndex;
+                    return rs.getInt("maxindex");
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -44,12 +43,12 @@ public class StoredDataHandler {
     }
 
 
-    public void saveData(DDGSpeler data) {
-        //Data wordt geupdate naar de database
+    public void saveData(DDGPlayer data) {
+        // Data gets updated to database
         Bukkit.getScheduler().runTaskAsynchronously(main, () -> {
             try (Connection connection = main.openConnection();
-                 PreparedStatement ps4 = connection.prepareStatement("UPDATE ddgspeler SET balance = " + main.getPlayerBank().get(data.getUuid()) + " WHERE uuid = '" + data.getUuid() + "';")) {
-                ps4.executeUpdate();
+                 PreparedStatement ps = connection.prepareStatement("UPDATE ddgspeler SET balance = " + main.getPlayerBank().get(data.getUuid()) + " WHERE uuid = '" + data.getUuid() + "';")) {
+                ps.executeUpdate();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
@@ -57,20 +56,20 @@ public class StoredDataHandler {
     }
 
 
-    public CompletableFuture<DDGSpeler> loadData(UUID uuid) {
+    public CompletableFuture<DDGPlayer> loadData(UUID uuid) {
         return CompletableFuture.supplyAsync(() -> {
-            //Eerste keer inloggen maakt een rij aan in database
+            // First login makes row in table
             try (Connection connection = main.openConnection()) {
-                PreparedStatement statement = connection.prepareStatement("SELECT COUNT(uuid) FROM ddgspeler WHERE uuid = '" + uuid + "';");
-                ResultSet rs = statement.executeQuery();
+                PreparedStatement ps = connection.prepareStatement("SELECT COUNT(uuid) FROM ddgspeler WHERE uuid = '" + uuid + "';");
+                ResultSet rs = ps.executeQuery();
                 rs.next();
                 if (rs.getInt(1) == 0) {
-                    PreparedStatement ps = connection.prepareStatement("INSERT INTO ddgspeler(uuid,balance) VALUES ('"
+                    PreparedStatement ps2 = connection.prepareStatement("INSERT INTO ddgspeler(uuid,balance) VALUES ('"
                             + uuid + "',DEFAULT)");
-                    ps.executeUpdate();
-                    ps.close();
+                    ps2.executeUpdate();
+                    ps2.close();
                 }
-                return new DDGSpeler(uuid);
+                return new DDGPlayer(uuid);
             } catch (SQLException e) {
                 e.printStackTrace();
                 return null;
@@ -88,60 +87,58 @@ public class StoredDataHandler {
                      ResultSet rs2 = ps2.executeQuery()) {
 
                     while (rs.next()) {
-                        //Creation of veilingItem
+                        // Creation of AuctionItem
                         int id = rs.getInt("itemindex");
                         UUID uuidOwner = UUID.fromString(rs.getString("uuidowner"));
-                        Material material = Material.matchMaterial(rs.getString("material"));
-                        int quantity = rs.getInt("quantity");
-                        ItemStack itemStack = new ItemStack(material, quantity);
+                        ItemStack itemStack = ItemStackSerializer.StringToItemStack(rs.getString("itemstack"));
                         int timeOfDeletion = rs.getInt("timeofdeletion");
 
-
-                        VeilingItem veilingItem = new VeilingItem(id, itemStack, uuidOwner, timeOfDeletion);
+                        AuctionItem auctionItem = new AuctionItem(id, itemStack, uuidOwner, timeOfDeletion);
                         UUID uuidBidder = UUID.fromString(rs.getString("uuidbidder"));
-                        veilingItem.setUuidBidder(uuidBidder);
-                        veilingItem.setHighestOffer(rs.getInt("highestoffer"));
-                        veilingItem.setBumped(rs.getBoolean("Bumped"));
-                        //Creation of  DDGspeler who have items on auctionhouse
-                        DDGSpeler bieder;
+                        auctionItem.setUuidBidder(uuidBidder);
+                        auctionItem.setHighestOffer(rs.getInt("highestoffer"));
+
+                        boolean bumped;
+                        bumped = rs.getInt("Bumped") != 0;
+                        auctionItem.setBumped(bumped);
+                        // Creation of DDGPlayer who have items on auctionhouse
+                        DDGPlayer Bidder;
                         if (uuidBidder.toString().equals(uuidOwner.toString())) {
                             if (main.getOnlinePlayers().containsKey(uuidBidder)) {
-                                bieder = main.getOnlinePlayers().get(uuidBidder);
+                                Bidder = main.getOnlinePlayers().get(uuidBidder);
                             } else if (main.getPlayersWithItems().containsKey(uuidBidder)) {
-                                bieder = main.getPlayersWithItems().get(uuidBidder);
+                                Bidder = main.getPlayersWithItems().get(uuidBidder);
                             } else if (main.getPlayersWithBiddings().containsKey(uuidBidder)) {
-                                bieder = main.getPlayersWithBiddings().get(uuidBidder);
+                                Bidder = main.getPlayersWithBiddings().get(uuidBidder);
                             } else {
-                                bieder = new DDGSpeler(uuidBidder);
+                                Bidder = new DDGPlayer(uuidBidder);
                             }
-                            bieder.getPersoonlijkeItems().add(veilingItem);
-                            bieder.getBiddenItems().add(veilingItem);
-                            main.updateLists(bieder);
-                            //main.getPlayersWithItems().put(uuidOwner, bieder);
-                            //main.getPlayersWithBiddings().put(uuidBidder, bieder);
+                            Bidder.getPersonalItems().add(auctionItem);
+                            Bidder.getBiddenItems().add(auctionItem);
+                            main.updateLists(Bidder);
                         } else {
-                            DDGSpeler eigenaar;
+                            DDGPlayer owner;
                             if (main.getPlayersWithItems().containsKey(uuidOwner)) {
-                                eigenaar = main.getPlayersWithItems().get(uuidOwner);
+                                owner = main.getPlayersWithItems().get(uuidOwner);
                             } else {
-                                eigenaar = new DDGSpeler(uuidOwner);
-                                main.getPlayersWithItems().put(uuidOwner, eigenaar);
+                                owner = new DDGPlayer(uuidOwner);
+                                main.getPlayersWithItems().put(uuidOwner, owner);
                             }
-                            eigenaar.getPersoonlijkeItems().add(veilingItem);
+                            owner.getPersonalItems().add(auctionItem);
 
-                            //Creation of DDGspeler who have bidden items
+                            //Creation of DDGPlayer who have bidden items
                             if (main.getPlayersWithItems().containsKey(uuidBidder)) {
-                                bieder = main.getPlayersWithItems().get(uuidBidder);
+                                Bidder = main.getPlayersWithItems().get(uuidBidder);
                             } else if (main.getPlayersWithBiddings().containsKey(uuidBidder)) {
-                                bieder = main.getPlayersWithBiddings().get(uuidBidder);
+                                Bidder = main.getPlayersWithBiddings().get(uuidBidder);
                             } else {
-                                bieder = new DDGSpeler(uuidBidder);
-                                main.getPlayersWithBiddings().put(uuidBidder, bieder);
+                                Bidder = new DDGPlayer(uuidBidder);
+                                main.getPlayersWithBiddings().put(uuidBidder, Bidder);
                             }
-                            bieder.getBiddenItems().add(veilingItem);
+                            Bidder.getBiddenItems().add(auctionItem);
                         }
-                        main.getVeilingItems().add(veilingItem);
-                        main.runTaskGiveItem(veilingItem, bieder, timeOfDeletion);
+                        main.getAuctionItems().add(auctionItem);
+                        main.runTaskGiveItem(auctionItem, Bidder, timeOfDeletion);
                     }
 
                     while (rs2.next()) {
@@ -161,40 +158,46 @@ public class StoredDataHandler {
         };
     }
 
+    // Saving AuctionHouse and Balance of Players after a certain time
     public Runnable saveAuctionHouseAndBalance() {
         return () -> {
             System.out.println("SAVED");
 
             try (Connection connection = main.openConnection()) {
-                //Veilingitems opslaan
-                if (!main.getVeilingItems().isEmpty()) {
-                    List<VeilingItem> veilingItems = new ArrayList<>(main.getVeilingItems());
-                    veilingItems.sort(new SortByIndexAscending());
-                    for (VeilingItem item : veilingItems) {
+                // Save AuctionItems
+                if (!main.getAuctionItems().isEmpty()) {
+                    List<AuctionItem> auctionItems = new ArrayList<>(main.getAuctionItems());
+                    auctionItems.sort(new SortByIndexAscending());
+                    for (AuctionItem item : auctionItems) {
                         try (PreparedStatement ps = connection.prepareStatement("SELECT COUNT(itemindex) FROM veilingitem WHERE itemindex = '" + item.getId() + "';");
                              ResultSet rs = ps.executeQuery()) {
                             rs.next();
-                            System.out.println("SAVED: " + rs.getInt(1));
+                            int bumped;
+                            if (item.isBumped()) {
+                                bumped = 1;
+                            } else {
+                                bumped = 0;
+                            }
                             if (rs.getInt(1) == 0) {
-                                System.out.println("Added new item " + item.getId());
-                                try (PreparedStatement ps2 = connection.prepareStatement("INSERT INTO veilingitem(highestoffer,uuidbidder,uuidowner,timeofdeletion,material,quantity,bumped) VALUES (" + item.getHighestOffer() +
+
+                                try (PreparedStatement ps2 = connection.prepareStatement("INSERT INTO veilingitem(highestoffer,uuidbidder,uuidowner,timeofdeletion,itemstack,bumped) VALUES (" + item.getHighestOffer() +
                                         ", '" + item.getUuidBidder() +
                                         "', '" + item.getUuidOwner() +
                                         "', " + (item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000)) +
-                                        ", '" + item.getItemStack().getType().toString() +
-                                        "', " + item.getItemStack().getAmount() +
-                                        ", '" + item.isBumped() + "') ")) {
+                                        ", '" + ItemStackSerializer.ItemStackToString(item.getItemStack()) +
+                                        "', " + bumped + ") ")) {
 
                                     ps2.executeUpdate();
                                 } catch (SQLException ex) {
                                     ex.printStackTrace();
                                 }
                             } else {
-                                System.out.println("Updated item " + item.getId());
-                                try (PreparedStatement ps3 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
-                                        + "',uuidowner = '" + item.getUuidOwner() + "',timeofdeletion = " + (item.getTimeOfDeletion() - System.currentTimeMillis() / 1000) + ", material = '" + item.getItemStack().getType()
-                                        + "',quantity = " + item.getItemStack().getAmount() + "',bumped = " + item.isBumped() + "' WHERE itemindex = '" + item.getId() + "';")) {
-                                    ps3.executeUpdate();
+
+                                try (PreparedStatement ps2 = connection.prepareStatement("UPDATE veilingitem SET highestoffer =  " + item.getHighestOffer() + ", uuidbidder = '" + item.getUuidBidder()
+                                        + "',uuidowner = '" + item.getUuidOwner() + "',timeofdeletion = " + (item.getTimeOfDeletion() - System.currentTimeMillis() / 1000) + ", itemstack = '" + ItemStackSerializer.ItemStackToString(item.getItemStack())
+                                        + "', bumped = " + bumped + " WHERE itemindex = " + item.getId() + ";")) {
+
+                                    ps2.executeUpdate();
                                 }
                             }
                         } catch (SQLException e) {
@@ -203,16 +206,14 @@ public class StoredDataHandler {
                     }
                 }
 
-                //Veilingitems verwijderen
+                // Removing AuctionItems
                 if (!main.getItemsRemoveDatabase().isEmpty()) {
-                    List<VeilingItem> removeVeilingItems = new ArrayList<>(main.getItemsRemoveDatabase());
-                    //removeVeilingItems.sort(new SortByIndex());
-                    List<VeilingItem> toRemove = new ArrayList<>();
-                    for (VeilingItem item : removeVeilingItems) {
+                    List<AuctionItem> removeAuctionItems = new ArrayList<>(main.getItemsRemoveDatabase());
+                    List<AuctionItem> toRemove = new ArrayList<>();
+                    for (AuctionItem item : removeAuctionItems) {
                         if (item.getId() != 0) {
-                            System.out.println("Er wordt een item verwijderd: " + item.getId());
-                            try (PreparedStatement ps1 = connection.prepareStatement("DELETE FROM veilingitem WHERE itemindex = " + item.getId() + ";")) {
-                                ps1.executeUpdate();
+                            try (PreparedStatement ps = connection.prepareStatement("DELETE FROM veilingitem WHERE itemindex = " + item.getId() + ";")) {
+                                ps.executeUpdate();
                             } catch (SQLException e) {
                                 e.printStackTrace();
                             }
@@ -222,10 +223,10 @@ public class StoredDataHandler {
                     main.getItemsRemoveDatabase().removeAll(toRemove);
                 }
 
-                //Balance opslaan
-                for (Map.Entry pl : main.getPlayerBank().entrySet())
-                    try (PreparedStatement ps4 = connection.prepareStatement("UPDATE ddgspeler SET balance = " + pl.getValue() + " WHERE uuid = '" + pl.getKey() + "';")) {
-                        ps4.executeUpdate();
+                // Save Balance
+                for (Map.Entry<UUID, Double> pl : main.getPlayerBank().entrySet())
+                    try (PreparedStatement ps = connection.prepareStatement("UPDATE ddgspeler SET balance = " + pl.getValue() + " WHERE uuid = '" + pl.getKey() + "';")) {
+                        ps.executeUpdate();
                     } catch (SQLException ex) {
                         ex.printStackTrace();
                     }

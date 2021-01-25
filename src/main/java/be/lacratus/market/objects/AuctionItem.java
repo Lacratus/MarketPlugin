@@ -5,7 +5,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
 
-public class VeilingItem implements Comparable<VeilingItem> {
+public class AuctionItem implements Comparable<AuctionItem> {
     private int id;
     private ItemStack itemStack;
     private int highestOffer;
@@ -17,7 +17,7 @@ public class VeilingItem implements Comparable<VeilingItem> {
 
     public boolean bumped;
 
-    public VeilingItem(int id, ItemStack itemStack, UUID uuidOwner, long timeLeft) {
+    public AuctionItem(int id, ItemStack itemStack, UUID uuidOwner, long timeLeft) {
         this.id = id;
         this.itemStack = itemStack;
         this.uuidOwner = uuidOwner;
@@ -70,7 +70,6 @@ public class VeilingItem implements Comparable<VeilingItem> {
         this.uuidOwner = uuidOwner;
     }
 
-
     public long getTimeOfDeletion() {
         return timeOfDeletion;
     }
@@ -79,16 +78,12 @@ public class VeilingItem implements Comparable<VeilingItem> {
         return id;
     }
 
-    public void setId(int id) {
-        this.id = id;
-    }
-
 
     @Override
-    public int compareTo(VeilingItem veilingItem) {
-        if (id > veilingItem.id)
+    public int compareTo(AuctionItem auctionItem) {
+        if (id > auctionItem.id)
             return 1;
-        else if (id < veilingItem.id)
+        else if (id < auctionItem.id)
             return -1;
         return 0;
     }

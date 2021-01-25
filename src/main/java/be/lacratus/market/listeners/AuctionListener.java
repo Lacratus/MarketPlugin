@@ -1,9 +1,9 @@
 package be.lacratus.market.listeners;
 
 import be.lacratus.market.Market;
-import be.lacratus.market.objects.AuctionHouse;
-import be.lacratus.market.objects.DDGSpeler;
-import be.lacratus.market.objects.VeilingItem;
+import be.lacratus.market.objects.AuctionItem;
+import be.lacratus.market.objects.DDGPlayer;
+import be.lacratus.market.util.AuctionHouse;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -31,7 +31,7 @@ public class AuctionListener implements Listener {
     public void onClick(InventoryClickEvent event) {
 
         Player player = (Player) event.getWhoClicked();
-        DDGSpeler eigenaar = main.getOnlinePlayers().get(player.getUniqueId());
+        DDGPlayer owner = main.getOnlinePlayers().get(player.getUniqueId());
         ItemStack item = event.getCurrentItem();
         Inventory inv = event.getInventory();
         if (item == null || item.getType() == null) {
@@ -43,23 +43,23 @@ public class AuctionListener implements Listener {
 
                 //Next or previous page
                 if (event.getRawSlot() == 45 && item.getType().equals(Material.STAINED_GLASS) && item.getDurability() == 5) {
-                    AuctionHouse.openAuctionHouse(player, main.getVeilingItems(), page - 1, "AuctionHouse");
+                    AuctionHouse.openAuctionHouse(player, main.getAuctionItems(), page - 1, "AuctionHouse");
                 } else if (event.getRawSlot() == 53 && item.getType().equals(Material.STAINED_GLASS) && item.getDurability() == 5) {
-                    AuctionHouse.openAuctionHouse(player, main.getVeilingItems(), page + 1, "AuctionHouse");
+                    AuctionHouse.openAuctionHouse(player, main.getAuctionItems(), page + 1, "AuctionHouse");
                 } else {
                     //Setting up bidding
                     int slot = event.getSlot();
-                    List<VeilingItem> veilingItems = new ArrayList<>(main.getVeilingItems());
-                    if (veilingItems.size() > slot) {
-                        VeilingItem veilingItem = veilingItems.get(slot);
-                        if (!main.getVeilingItems().contains(veilingItem)) {
+                    List<AuctionItem> auctionItems = new ArrayList<>(main.getAuctionItems());
+                    if (auctionItems.size() > slot) {
+                        AuctionItem auctionItem = auctionItems.get(slot);
+                        if (!main.getAuctionItems().contains(auctionItem)) {
                             player.sendMessage("This item has been sold or magically doesn't exist");
-                        } else if (eigenaar.getPersoonlijkeItems().contains(veilingItem)) {
+                        } else if (owner.getPersonalItems().contains(auctionItem)) {
                             player.sendMessage("You can't bid on your own items!");
                         } else {
-                            eigenaar.setBidVeilingItem(veilingItem);
+                            owner.setBidAuctionItem(auctionItem);
                             player.sendMessage("How much do you want to bid?");
-                            eigenaar.setBidding(true);
+                            owner.setBidding(true);
                         }
                         event.getWhoClicked().closeInventory();
                     }
@@ -69,37 +69,37 @@ public class AuctionListener implements Listener {
         } else if (inv.getTitle().contains("Personal")) {
             event.setCancelled(true);
             if (player.getInventory().firstEmpty() != -1 && event.getRawSlot() < event.getInventory().getSize()) {
-                //Verkrijg item
+                // Get Item
                 int slot = event.getSlot();
                 try {
-                    List<VeilingItem> personalVeilingItems = new ArrayList<>(eigenaar.getPersoonlijkeItems());
-                    VeilingItem veilingItem = personalVeilingItems.get(slot);
-                    //Verwijder item uit auctionhouse
-                    main.getVeilingItems().remove(veilingItem);
-                    eigenaar.getPersoonlijkeItems().remove(veilingItem);
+                    List<AuctionItem> personalAuctionItems = new ArrayList<>(owner.getPersonalItems());
+                    if (personalAuctionItems.size() > slot) {
 
-                    //Geef item terug aan eigenaar
-                    ItemStack returnedItem = veilingItem.getItemStack();
-                    ItemMeta itemMeta = returnedItem.getItemMeta();
-                    itemMeta.setLore(null);
-                    returnedItem.setItemMeta(itemMeta);
-                    player.getInventory().setItem(player.getInventory().firstEmpty(), returnedItem);
-                    //Stop teruggave na tijdsaangifte
-                    veilingItem.getBukkitTask().cancel();
+                        AuctionItem auctionItem = personalAuctionItems.get(slot);
+                        // Delete item from Auctionhouse
+                        main.getAuctionItems().remove(auctionItem);
+                        owner.getPersonalItems().remove(auctionItem);
 
-                    //Verwijder item bij bieder
-                    DDGSpeler bieder = main.getPlayersWithBiddings().get(veilingItem.getUuidBidder());
-                    bieder.getBiddenItems().remove(veilingItem);
-                    if (veilingItem.getUuidBidder() != veilingItem.getUuidOwner()) {
-                        main.getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(bieder.getUuid()), veilingItem.getHighestOffer());
+                        // Give item back to owner
+                        ItemStack returnedItem = auctionItem.getItemStack();
+                        ItemMeta itemMeta = returnedItem.getItemMeta();
+                        itemMeta.setLore(null);
+                        returnedItem.setItemMeta(itemMeta);
+                        player.getInventory().setItem(player.getInventory().firstEmpty(), returnedItem);
+                        // Stop Task
+                        auctionItem.getBukkitTask().cancel();
+
+                        // Delete item at bidder
+                        DDGPlayer bidder = main.getPlayersWithBiddings().get(auctionItem.getUuidBidder());
+                        bidder.getBiddenItems().remove(auctionItem);
+                        if (auctionItem.getUuidBidder() != auctionItem.getUuidOwner()) {
+                            main.getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(bidder.getUuid()), auctionItem.getHighestOffer());
+                        }
+                        // Update inventory
+                        AuctionHouse.openAuctionHouse(player, main.getAuctionItems(), 1, "Personal");
                     }
-                    //update inventory
-                    AuctionHouse.openAuctionHouse(player, main.getVeilingItems(), 1, "Personal");
-                    System.out.println("works 2");
-
                 } catch (Exception e1) {
                     e1.printStackTrace();
-                    System.out.println("works 3");
                 }
 
             } else {
@@ -113,55 +113,47 @@ public class AuctionListener implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
-        DDGSpeler ddgSpeler = main.getOnlinePlayers().get(uuid);
-        if (ddgSpeler.isBidding()) {
+        DDGPlayer ddgPlayer = main.getOnlinePlayers().get(uuid);
+        if (ddgPlayer.isBidding()) {
             try {
                 int bidding = Integer.parseInt(event.getMessage());
-                VeilingItem veilingItem = ddgSpeler.getBidVeilingItem();
+                AuctionItem auctionItem = ddgPlayer.getBidAuctionItem();
                 if (bidding >= main.getPlayerBank().get(uuid)) {
                     player.sendMessage("You don't have enough money");
                     return;
                 }
-                if (bidding < veilingItem.getHighestOffer()) {
+                if (bidding < auctionItem.getHighestOffer()) {
                     player.sendMessage("Your offer isn't high enough");
                     return;
                 }
                 //Delete oldbidder
-                System.out.println("" + veilingItem.getUuidBidder() + "    " + main.getPlayersWithBiddings());
-                DDGSpeler oldBidder = main.getPlayersWithBiddings().get(veilingItem.getUuidBidder());
-                System.out.println(oldBidder.getBiddenItems());
-                oldBidder.getBiddenItems().remove(veilingItem);
-                System.out.println(main.getPlayersWithBiddings());
+                DDGPlayer oldBidder = main.getPlayersWithBiddings().get(auctionItem.getUuidBidder());
+                oldBidder.getBiddenItems().remove(auctionItem);
                 main.updateLists(oldBidder);
-                System.out.println(oldBidder.getBiddenItems());
-                System.out.println(main.getPlayersWithBiddings());
-                //Return money
-                if (veilingItem.getUuidOwner() != veilingItem.getUuidBidder()) {
-                    main.getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldBidder.getUuid()), veilingItem.getHighestOffer());
+                // Return money
+                if (auctionItem.getUuidOwner() != auctionItem.getUuidBidder()) {
+                    main.getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldBidder.getUuid()), auctionItem.getHighestOffer());
                 }
-                //Create newBidder
-                veilingItem.setHighestOffer(bidding);
-                veilingItem.setUuidBidder(uuid);
-                            /*List<String> lores = veilingItem.getLore();
-                            String bidLore = "Bid: " + bidding;
-                            lores.set(0, bidLore);*/
-                ddgSpeler.getBiddenItems().add(veilingItem);
-                main.getPlayersWithBiddings().put(uuid, ddgSpeler);
-                main.updateLists(ddgSpeler);
-                //Remove & return money
+                // Create newBidder
+                auctionItem.setHighestOffer(bidding);
+                auctionItem.setUuidBidder(uuid);
+                ddgPlayer.getBiddenItems().add(auctionItem);
+                main.getPlayersWithBiddings().put(uuid, ddgPlayer);
+                main.updateLists(ddgPlayer);
+                // Remove & return money
                 main.getEconomyImplementer().withdrawPlayer(player, bidding);
-                //
-                long timeLeft = veilingItem.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
-                veilingItem.getBukkitTask().cancel();
-                System.out.println("Test 1.1: " + ddgSpeler.getBiddenItems());
-                main.runTaskGiveItem(veilingItem, ddgSpeler, timeLeft);
-                ddgSpeler.setBidVeilingItem(null);
+
+                // Run new task
+                long timeLeft = auctionItem.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
+                auctionItem.getBukkitTask().cancel();
+                main.runTaskGiveItem(auctionItem, ddgPlayer, timeLeft);
+                ddgPlayer.setBidAuctionItem(null);
             } catch (Exception ex) {
                 player.sendMessage("The bidding can't be text");
                 ex.printStackTrace();
             }
 
-            ddgSpeler.setBidding(false);
+            ddgPlayer.setBidding(false);
             event.setCancelled(true);
         }
     }
