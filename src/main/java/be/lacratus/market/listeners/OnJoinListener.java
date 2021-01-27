@@ -59,7 +59,7 @@ public class OnJoinListener implements Listener {
                 long timeLeft = item.getTimeOfDeletion() - (System.currentTimeMillis() / 1000);
                 if (timeLeft < 0) {
                     player.sendMessage("You are getting a item from the auction, get some inventory space");
-                    main.giveItemWhenInventoryFull(item, ddgPlayer, 30);
+                    main.runTaskGiveItem(item, ddgPlayer, 30);
                     main.getPlayersWithBiddings().get(uuid).getBiddenItems().remove(item);
                 }
             }

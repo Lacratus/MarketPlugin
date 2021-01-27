@@ -13,7 +13,6 @@ import be.lacratus.market.util.SortByIndexAscending;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -180,55 +179,23 @@ public final class Market extends JavaPlugin {
 
     //Used for bringing/returning items
     public void runTaskGiveItem(AuctionItem auctionItem, DDGPlayer ddgPlayer, long timeLeft) {
-        BukkitTask bukkitTask = Bukkit.getScheduler().runTaskLater(this, () -> {
-            UUID uuid = ddgPlayer.getUuid();
-            Player ownerItem = Bukkit.getPlayer(uuid);
-
-
-            getAuctionItems().remove(auctionItem);
-            DDGPlayer oldOwner = getPlayersWithItems().get(auctionItem.getUuidOwner());
-            oldOwner.getPersonalItems().remove(auctionItem);
-            ItemMeta itemMeta = auctionItem.getItemStack().getItemMeta();
-            List<String> lores = itemMeta.getLore();
-            auctionItem.getItemStack().setItemMeta(itemMeta);
-            if (Bukkit.getPlayer(uuid) != null) {
-                if (ownerItem.getInventory().firstEmpty() != -1) {
-                    ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), auctionItem.getItemStack());
-                    getItemsRemoveDatabase().add(auctionItem);
-                } else {
-                    giveItemWhenInventoryFull(auctionItem, ddgPlayer, 30);
-                    Bukkit.getPlayer(uuid).sendMessage("Your inventor is full, We are trying again in 30 seconds");
-                }
-            } else {
-                ddgPlayer.getBiddenItems().add(auctionItem);
-            }
-            ddgPlayer.getBiddenItems().remove(auctionItem);
-
-            //update of lists
-            updateLists(ddgPlayer);
-            if (ddgPlayer.getUuid() != oldOwner.getUuid()) {
-                updateLists(oldOwner);
-                //Money goes to old owner
-                getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldOwner.getUuid()), auctionItem.getHighestOffer());
-            }
-
-        }, 20L * (timeLeft));
-        auctionItem.setBukkitTask(bukkitTask);
-    }
-
-    //used when inventory is full or when filling the auctionhouse on startup
-    public void giveItemWhenInventoryFull(AuctionItem auctionItem, DDGPlayer ddgPlayer, long timeLeft) {
         UUID uuid = ddgPlayer.getUuid();
         Player ownerItem = Bukkit.getPlayer(uuid);
         DDGPlayer oldOwner = getPlayersWithItems().get(auctionItem.getUuidOwner());
         BukkitTask bukkitTask = Bukkit.getScheduler().runTaskLater(this, () -> {
+
+            if (getAuctionItems().contains(auctionItem)) {
+                getAuctionItems().remove(auctionItem);
+                oldOwner.getPersonalItems().remove(auctionItem);
+            }
+
             if (Bukkit.getPlayer(uuid) != null) {
                 if (ownerItem.getInventory().firstEmpty() != -1) {
                     ownerItem.getInventory().setItem(ownerItem.getInventory().firstEmpty(), auctionItem.getItemStack());
                     getItemsRemoveDatabase().add(auctionItem);
                 } else {
+                    runTaskGiveItem(auctionItem, ddgPlayer, 30);
                     Bukkit.getPlayer(uuid).sendMessage("Your inventor is full, We are trying again in 30 seconds");
-                    giveItemWhenInventoryFull(auctionItem, ddgPlayer, 30);
                 }
             } else {
                 ddgPlayer.getBiddenItems().add(auctionItem);
@@ -239,6 +206,8 @@ public final class Market extends JavaPlugin {
             updateLists(ddgPlayer);
             if (oldOwner != null && ddgPlayer.getUuid() != oldOwner.getUuid()) {
                 updateLists(oldOwner);
+                //Money goes to old owner
+                getEconomyImplementer().depositPlayer(Bukkit.getOfflinePlayer(oldOwner.getUuid()), auctionItem.getHighestOffer());
             }
 
         }, 20L * (timeLeft));
